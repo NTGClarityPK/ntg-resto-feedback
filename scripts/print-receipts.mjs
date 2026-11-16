@@ -62,7 +62,7 @@ const receipts = [];
 for (const [i, order] of ORDERS.entries()) {
   const orderId = `T${stamp}-${i + 1}`;
   const link = signedLink(orderId, printedAtSec);
-  const qrSvg = await QRCode.toString(link, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+  const qrSvg = await QRCode.toString(link, { type: "svg", margin: 3, errorCorrectionLevel: "L" });
   const subtotal = order.items.reduce((s, [, q, p]) => s + q * p, 0);
   const tax = Math.round(subtotal * TAX_RATE);
   receipts.push(`
@@ -105,7 +105,7 @@ const html = `<!doctype html>
   .row.sub { padding-left: 3mm; }
   .item { font-weight: bold; margin-top: 1.5mm; }
   hr { border: 0; border-top: 1px dashed #000; margin: 2.5mm 0; }
-  .qr { width: 46mm; margin: 2mm auto; }
+  .qr { width: 58mm; margin: 2mm auto; }
   .qr svg { width: 100%; height: auto; display: block; }
   @media screen { body { background: #eee; } .receipt { background: #fff; margin: 12px auto; padding: 4mm; width: calc(72mm + 8mm); } }
 </style></head>

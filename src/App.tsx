@@ -398,7 +398,9 @@ function ScanQrButton() {
       const text = await readQrFromPhoto(file);
       const token = text ? extractQrToken(text) : null;
       if (!token) {
-        setError("We couldn't find a QR code. Hold the camera closer and keep the QR in focus.");
+        setError(text
+          ? "That QR code isn't one of our receipts. Please scan the QR printed on your bill."
+          : "We couldn't find a QR code in that photo. Fill most of the photo with the QR, hold steady, and avoid glare.");
         return;
       }
       window.location.assign(`${window.location.pathname}?qr=${encodeURIComponent(token)}`);
@@ -411,9 +413,8 @@ function ScanQrButton() {
 
   return (
     <div className="scan-qr">
-      {error && <p className="notice">{error}</p>}
       <label className={`btn file-btn${busy ? " disabled" : ""}`}>
-        {busy ? "Reading QR…" : "Scan QR code"}
+        {busy ? "Reading QR…" : error ? "Try again" : "Scan QR code"}
         <input
           type="file"
           accept="image/*"
@@ -423,6 +424,7 @@ function ScanQrButton() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
         />
       </label>
+      {error && <p className="notice" role="alert">{error}</p>}
     </div>
   );
 }
