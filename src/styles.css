@@ -1,0 +1,183 @@
+/* Palette: Bubblegum. Change the variables here to restyle the whole app. */
+:root {
+  --page: #f7dcea;
+  --bg: #fff0f6;
+  --surface: #ffffff;
+  --ink: #3a0c2a;
+  --muted: #8a5d7a;
+  --line: #f5d3e3;
+  --accent: #ff3d7f;
+  --on-accent: #ffffff;
+  --accent-soft: #ffd6e8;
+  --okay-soft: #fce8f1;
+  --okay-line: #d9a6bf;
+  --warn: #0e7c86;
+  --warn-soft: #d3f3f6;
+  --shadow: 0 1px 0 rgba(58, 12, 42, 0.05), 0 12px 28px -14px rgba(255, 61, 127, 0.35);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+}
+button, input, textarea { font: inherit; }
+
+/* Portrait-only, phone-first. On wide screens it sits in a phone-sized frame. */
+.device {
+  width: 100%;
+  max-width: 400px;
+  height: 100dvh;
+  max-height: 860px;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 500px) {
+  .device {
+    border-radius: 36px;
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.35);
+    border: 8px solid #1b1d21;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  body::before {
+    content: "Please rotate your phone to portrait";
+    position: fixed; inset: 0; display: grid; place-items: center;
+    background: var(--bg); color: var(--ink); font-weight: 700; z-index: 10;
+  }
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 22px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.screen.center { align-items: center; justify-content: center; text-align: center; gap: 14px; padding-bottom: 40px; }
+.fade { animation: fade 0.35s ease both; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 10px; min-height: 64px; }
+.iconbtn {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); display: grid; place-items: center; cursor: pointer; color: var(--ink);
+}
+.brand { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.timer {
+  font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+  padding: 6px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.timer.low { color: var(--warn); background: var(--warn-soft); }
+
+.progress { display: flex; gap: 6px; margin: 6px 0 22px; }
+.progress span { flex: 1; height: 4px; border-radius: 4px; background: var(--line); }
+.progress span.on { background: var(--accent); }
+
+h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+.h1-sm { font-size: 26px; }
+.sub { color: var(--muted); font-size: 15px; line-height: 1.45; }
+.sub.spaced { margin: 6px 0 22px; }
+.sub.small { font-size: 13px; }
+.sub.narrow { max-width: 280px; }
+.center-text { text-align: center; margin-bottom: 8px; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.eyebrow.tight { margin: 4px 0 10px; }
+.notice {
+  background: var(--warn-soft); color: var(--ink); font-size: 14px; line-height: 1.4;
+  padding: 12px 14px; border-radius: 14px; margin-top: 4px;
+}
+
+.hero { display: flex; align-items: center; justify-content: center; height: 150px; margin: 6px 0 12px; }
+.hero-mark { width: 120px; height: 120px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.meta { display: flex; flex-direction: column; gap: 10px; margin: 22px 0; }
+.meta div { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+
+.footer { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 4px; }
+.btn {
+  width: 100%; height: 56px; border-radius: 16px; border: 0; background: var(--accent); color: var(--on-accent);
+  font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.file-btn { cursor: pointer; }
+.link {
+  background: none; border: 0; font-size: 14px; font-weight: 600; color: var(--muted);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 10px; align-self: center;
+}
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 16px; box-shadow: var(--shadow); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack-12 { display: flex; flex-direction: column; gap: 12px; }
+.stack-14 { display: flex; flex-direction: column; gap: 14px; }
+
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.opt {
+  height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.opt.sel-good { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.opt.sel-okay { background: var(--okay-soft); border-color: var(--okay-line); }
+.opt.sel-bad { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+
+.tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 12px;
+  font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+}
+.tag.on { background: var(--warn); border-color: var(--warn); color: var(--on-accent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 8px 8px 14px; font-size: 14px; font-weight: 600;
+}
+.chip button { border: 0; background: var(--accent-soft); color: var(--ink); width: 22px; height: 22px; border-radius: 50%; cursor: pointer; line-height: 1; }
+.add-row { display: flex; gap: 8px; }
+.add-row input {
+  flex: 1; height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 0 14px; color: var(--ink); outline: none;
+}
+.add-row input:focus { border-color: var(--accent); }
+.add-btn { height: 48px; padding: 0 18px; border-radius: 14px; border: 0; background: var(--ink); color: var(--bg); font-weight: 700; cursor: pointer; }
+.add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cat-label { font-size: 16px; font-weight: 700; }
+.faces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.face-btn {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 14px; padding: 10px 4px 8px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.face-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+textarea {
+  width: 100%; min-height: 150px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
+  padding: 14px; font-size: 15px; color: var(--ink); resize: none; outline: none;
+}
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: var(--muted); }
+.counter { text-align: right; font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.badge { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+
+.spinner {
+  width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade, .spinner { animation: none; }
+}
