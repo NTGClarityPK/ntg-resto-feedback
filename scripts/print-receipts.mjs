@@ -1,4 +1,4 @@
-// Builds 5 test receipts for an 80mm thermal printer, each with a freshly signed QR code.
+// Builds 3 test receipts for an 80mm thermal printer, each with a freshly signed QR code.
 // Usage (PowerShell):
 //   $env:QR_SIGNING_KEY = '<same value as the Supabase secret>'
 //   npm run receipts                       -> uses this PC's Wi-Fi address on port 5173
@@ -19,8 +19,6 @@ const ORDERS = [
   { table: "T-03", server: "Ali", items: [["Chicken Karahi (Half)", 1, 1450], ["Garlic Naan", 2, 120], ["Mint Raita", 1, 180], ["Mineral Water 1.5L", 1, 150]] },
   { table: "T-07", server: "Sara", items: [["Beef Biryani", 2, 850], ["Shami Kabab", 4, 140], ["Kheer", 2, 320], ["Pepsi 345ml", 2, 120]] },
   { table: "T-01", server: "Ahmed", items: [["Mutton Nihari", 1, 1250], ["Khamiri Roti", 3, 60], ["Chicken Tikka", 1, 780]] },
-  { table: "T-12", server: "Ali", items: [["Seekh Kabab Platter", 1, 1600], ["Daal Makhni", 1, 650], ["Butter Naan", 2, 140], ["Fresh Lime", 2, 250], ["Gulab Jamun", 2, 200]] },
-  { table: "T-05", server: "Sara", items: [["Chicken Handi", 1, 1350], ["Vegetable Pulao", 1, 700], ["Kashmiri Chai", 2, 280]] },
 ];
 
 function lanUrl() {
