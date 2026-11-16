@@ -3,15 +3,28 @@ import type { CategoryId, DishItem, Sentiment, SessionInfo, SessionStatus } from
 const BASE = import.meta.env.VITE_FUNCTIONS_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+// 128 random bits as hex. crypto.randomUUID() is not used because browsers only offer it on
+// https (or localhost) pages; getRandomValues works everywhere, including a plain-http address.
+function randomId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // A random id kept on the device. The server only ever stores a keyed hash of it.
+let memoryDeviceId: string | null = null;
 function deviceId(): string {
   const key = "tf_device";
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
+  try {
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = randomId();
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    // Storage blocked (some private modes): keep one id for this page visit.
+    return (memoryDeviceId ??= randomId());
   }
-  return id;
 }
 
 async function call<T>(fn: string, body: unknown): Promise<T & { status?: string; error?: string }> {
