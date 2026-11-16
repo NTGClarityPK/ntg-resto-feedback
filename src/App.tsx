@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { checkSession, readBill, submitFeedback } from "./api";
 import { shrinkToJpeg } from "./image";
+import { extractQrToken, readQrFromPhoto } from "./qrScan";
 import { AlertIcon, Centered, CheckIcon, Face, Progress, TopBar } from "./components";
 import { BAD_TAGS, CATEGORIES, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
@@ -172,6 +173,7 @@ export default function App() {
       <Shell>
         <Centered icon={<AlertIcon />} tone={c.warn ? "warn" : "ok"} title={c.title}>
           <p className="sub narrow">{c.body}</p>
+          {reason !== "limit_reached" && <ScanQrButton />}
         </Centered>
       </Shell>
     );
@@ -381,6 +383,48 @@ export default function App() {
 
 function Shell({ children }: { children: ReactNode }) {
   return <div className="device">{children}</div>;
+}
+
+// Opens the camera, reads the QR on the bill and loads it on this same site.
+// Keeping the current origin means a QR printed with another domain still works here.
+function ScanQrButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onFile(file: File) {
+    setBusy(true);
+    setError(null);
+    try {
+      const text = await readQrFromPhoto(file);
+      const token = text ? extractQrToken(text) : null;
+      if (!token) {
+        setError("We couldn't find a QR code. Hold the camera closer and keep the QR in focus.");
+        return;
+      }
+      window.location.assign(`${window.location.pathname}?qr=${encodeURIComponent(token)}`);
+    } catch {
+      setError("We couldn't read that photo. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="scan-qr">
+      {error && <p className="notice">{error}</p>}
+      <label className={`btn file-btn${busy ? " disabled" : ""}`}>
+        {busy ? "Reading QR…" : "Scan QR code"}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
+        />
+      </label>
+    </div>
+  );
 }
 
 function RateButton({ face, label, selected, onClick }: { face: FaceKind; label: string; selected: boolean; onClick: () => void }) {

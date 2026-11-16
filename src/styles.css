@@ -113,6 +113,8 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .file-btn { cursor: pointer; }
+.file-btn.disabled { opacity: 0.5; cursor: wait; }
+.scan-qr { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 .link {
   background: none; border: 0; font-size: 14px; font-weight: 600; color: var(--muted);
   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 10px; align-self: center;
