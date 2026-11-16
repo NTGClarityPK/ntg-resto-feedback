@@ -7,20 +7,22 @@ export const IP_HOURLY_LIMIT = 20;
 
 const enc = new TextEncoder();
 
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, apikey, content-type, x-device-id",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": "*",
-      "access-control-allow-headers": "authorization, content-type, x-device-id",
-      "access-control-allow-methods": "POST, OPTIONS",
-    },
+    headers: { "content-type": "application/json", ...CORS },
   });
 }
 
+// A 204 response must not have a body, so the preflight is built without json().
 export function preflight(req: Request): Response | null {
-  return req.method === "OPTIONS" ? json({}, 204) : null;
+  return req.method === "OPTIONS" ? new Response(null, { status: 204, headers: CORS }) : null;
 }
 
 export function db(): SupabaseClient {

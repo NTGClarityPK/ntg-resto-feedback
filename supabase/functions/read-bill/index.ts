@@ -39,8 +39,11 @@ Deno.serve(async (req) => {
       "content-type": "application/json",
     },
     body: JSON.stringify({
+      // Cheapest current model. Reading a receipt needs no reasoning, so thinking is off:
+      // it would add cost and use up max_tokens before the JSON is written.
       model: "claude-haiku-5-5",
       max_tokens: 1200,
+      thinking: { type: "disabled" },
       messages: [{
         role: "user",
         content: [
@@ -53,7 +56,11 @@ Deno.serve(async (req) => {
   if (!res.ok) return json({ error: "ocr_failed" }, 502);
 
   const out = await res.json();
-  const text: string = out?.content?.[0]?.text ?? "";
+  // Take the text block wherever it is; the reply can also contain other block types.
+  const textBlock = Array.isArray(out?.content)
+    ? out.content.find((b: { type?: string }) => b?.type === "text")
+    : null;
+  const text: string = typeof textBlock?.text === "string" ? textBlock.text : "";
   const match = text.match(/\{[\s\S]*\}/);
   let parsed: { rawText?: unknown; dishes?: unknown } = {};
   try { parsed = match ? JSON.parse(match[0]) : {}; } catch { parsed = {}; }
