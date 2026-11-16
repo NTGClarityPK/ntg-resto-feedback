@@ -53,7 +53,14 @@ Deno.serve(async (req) => {
       }],
     }),
   });
-  if (!res.ok) return json({ error: "ocr_failed" }, 502);
+  if (!res.ok) {
+    // Log why the Claude API refused (status, error type and message; never the key),
+    // and pass the error type back so the cause is visible without digging through logs.
+    const err = await res.json().catch(() => null);
+    const type = typeof err?.error?.type === "string" ? err.error.type : "unknown";
+    console.error("read-bill: Claude API error", res.status, type, err?.error?.message ?? "");
+    return json({ error: "ocr_failed", status: res.status, detail: type }, 502);
+  }
 
   const out = await res.json();
   // Take the text block wherever it is; the reply can also contain other block types.
