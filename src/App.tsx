@@ -392,9 +392,25 @@ function Shell({ children }: { children: ReactNode }) {
 
 // Opens the camera, reads the QR on the bill and loads it on this same site.
 // Keeping the current origin means a QR printed with another domain still works here.
+// The scan error is also kept in sessionStorage. Opening the camera sends the browser to the
+// background, and some phones reload the page when it comes back, which would wipe the message.
+const SCAN_ERROR_KEY = "tf_scan_error";
+function loadScanError(): string | null {
+  try { return sessionStorage.getItem(SCAN_ERROR_KEY); } catch { return null; }
+}
+function saveScanError(msg: string | null) {
+  try {
+    if (msg) sessionStorage.setItem(SCAN_ERROR_KEY, msg);
+    else sessionStorage.removeItem(SCAN_ERROR_KEY);
+  } catch {
+    // Storage blocked (private mode etc.); the message still shows until a reload.
+  }
+}
+
 function ScanQrButton() {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(loadScanError);
+  const setError = (msg: string | null) => { saveScanError(msg); setErrorState(msg); };
 
   async function onFile(file: File) {
     setBusy(true);
