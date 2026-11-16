@@ -11,10 +11,11 @@ type Phase =
   | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
   | "dishes" | "experience" | "review" | "sending" | "thanks";
 
-type BlockReason = "invalid" | "expired" | "already_submitted" | "limit_reached" | "error";
+type BlockReason = "missing" | "invalid" | "expired" | "already_submitted" | "limit_reached" | "error";
 
 const BLOCK_COPY: Record<BlockReason, { title: string; body: string; warn: boolean }> = {
-  invalid: { title: "Scan your receipt", body: "Scan the QR code printed on your bill to share feedback.", warn: false },
+  missing: { title: "Scan your receipt", body: "Scan the QR code printed on your bill to share feedback.", warn: false },
+  invalid: { title: "This QR code isn't valid", body: "We couldn't verify this receipt. Please scan the QR code printed on your bill.", warn: true },
   expired: { title: "This receipt has expired", body: "Feedback can be given within 30 minutes of printing the bill. Thank you for dining with us.", warn: true },
   already_submitted: { title: "Already submitted", body: "You've already shared feedback for this bill. Thank you!", warn: false },
   limit_reached: { title: "Daily limit reached", body: "This device has already sent its feedback for today. Please try again tomorrow.", warn: true },
@@ -53,7 +54,7 @@ export default function App() {
 
   // Check the signed QR once on load.
   useEffect(() => {
-    if (!qr) return void block("invalid");
+    if (!qr) return void block("missing");
     checkSession(qr).then((s) => {
       if (s.status === "open") {
         setSession(s.info);

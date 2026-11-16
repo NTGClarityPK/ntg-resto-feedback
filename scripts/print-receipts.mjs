@@ -93,20 +93,22 @@ for (const [i, order] of ORDERS.entries()) {
 const html = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Test receipts</title>
 <style>
+  /* Thermal printers turn grey into faint dots, so everything is pure black, bold and
+     in a heavy sans-serif font. Thin fonts like Courier New print almost invisibly. */
   @page { size: 80mm auto; margin: 0; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #fff; color: #000; font: 12px/1.35 "Courier New", monospace; }
-  .receipt { width: 72mm; margin: 0 auto; padding: 4mm 0 8mm; page-break-after: always; break-after: page; }
+  * { box-sizing: border-box; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; background: #fff; font: 700 14px/1.4 Arial, Helvetica, sans-serif; }
+  .receipt { width: 72mm; margin: 0 auto; padding: 4mm 1mm 10mm; page-break-after: always; break-after: page; }
   .receipt:last-child { page-break-after: auto; break-after: auto; }
   .c { text-align: center; }
-  .big { font-size: 15px; font-weight: bold; }
-  .bold { font-weight: bold; }
+  .big { font-size: 18px; font-weight: 900; }
+  .bold { font-weight: 900; font-size: 16px; }
   .row { display: flex; justify-content: space-between; gap: 4mm; }
   .row.sub { padding-left: 3mm; }
-  .item { font-weight: bold; margin-top: 1.5mm; }
-  hr { border: 0; border-top: 1px dashed #000; margin: 2.5mm 0; }
+  .item { font-weight: 900; font-size: 15px; margin-top: 2mm; }
+  hr { border: 0; border-top: 2px dashed #000; margin: 3mm 0; }
   .qr { width: 58mm; margin: 2mm auto; }
-  .qr svg { width: 100%; height: auto; display: block; }
+  .qr svg { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
   @media screen { body { background: #eee; } .receipt { background: #fff; margin: 12px auto; padding: 4mm; width: calc(72mm + 8mm); } }
 </style></head>
 <body>${receipts.join("\n")}</body></html>`;
