@@ -1,7 +1,7 @@
 // Shared helpers for all edge functions. Runs on Deno.
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-export const WINDOW_MS = 30 * 60 * 1000;
+export const WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours from print time
 export const DEVICE_DAILY_LIMIT = 2;
 export const IP_HOURLY_LIMIT = 20;
 

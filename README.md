@@ -11,7 +11,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
                        │
                        ▼
             Supabase Edge Functions (only writers/readers)
-              ├─ session         verify QR signature, 30-min window, limits
+              ├─ session         verify QR signature, 3-hour window, limits
               ├─ read-bill       photo → dish names (OCR via Claude)
               ├─ submit-feedback validate, enforce one-per-bill, device + IP limits, insert
               ├─ export-feedback Resto pulls rows that match its own orders
@@ -26,7 +26,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
 | Rule | Where |
 |---|---|
 | QR is signed (HMAC-SHA256). Tenant and order cannot be forged | `_shared/common.ts` `verifyQr` |
-| 30 minutes from print time, read from the signed payload | `windowState` |
+| 3 hours from print time, read from the signed payload | `windowState` |
 | One feedback per tenant + order | unique constraint + pre-check |
 | Two submissions per device per day | `DEVICE_DAILY_LIMIT`, device id is hashed |
 | 20 submissions per network per hour (generous for shared Wi-Fi) | `IP_HOURLY_LIMIT`, IP is hashed |

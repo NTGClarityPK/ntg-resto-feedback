@@ -16,7 +16,7 @@ type BlockReason = "missing" | "invalid" | "expired" | "already_submitted" | "li
 const BLOCK_COPY: Record<BlockReason, { title: string; body: string; warn: boolean }> = {
   missing: { title: "Scan your receipt", body: "Scan the QR code printed on your bill to share feedback.", warn: false },
   invalid: { title: "This QR code isn't valid", body: "We couldn't verify this receipt. Please scan the QR code printed on your bill.", warn: true },
-  expired: { title: "This receipt has expired", body: "Feedback can be given within 30 minutes of printing the bill. Thank you for dining with us.", warn: true },
+  expired: { title: "This receipt has expired", body: "Feedback can be given within 3 hours of printing the bill. Thank you for dining with us.", warn: true },
   already_submitted: { title: "Already submitted", body: "You've already shared feedback for this bill. Thank you!", warn: false },
   limit_reached: { title: "Daily limit reached", body: "This device has already sent its feedback for today. Please try again tomorrow.", warn: true },
   error: { title: "Something went wrong", body: "We couldn't load this bill. Please try scanning again.", warn: true },
@@ -25,9 +25,13 @@ const BLOCK_COPY: Record<BlockReason, { title: string; body: string; warn: boole
 let idCounter = 0;
 const newId = () => `d${Date.now()}-${idCounter++}`;
 
+// Countdown text: "2:59:59" while an hour or more is left, then "59:59".
 function fmt(ms: number): string {
   const t = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  const h = Math.floor(t / 3600);
+  const mm = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
+  const ss = String(t % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 function readQr(): string {

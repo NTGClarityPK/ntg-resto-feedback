@@ -4,7 +4,7 @@
 //   npm run receipts                       -> uses this PC's Wi-Fi address on port 5173
 //   npm run receipts -- http://192.168.1.20:5173
 // Then open test-receipts.html in Chrome, press Ctrl+P and pick the thermal printer.
-// Each QR works for 30 minutes from the moment this script runs, and each one can be used once.
+// Each QR works for 3 hours from the moment this script runs, and each one can be used once.
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
@@ -53,7 +53,7 @@ const money = (n) => n.toLocaleString("en-PK");
 
 const now = new Date();
 const printedAtSec = Math.floor(now.getTime() / 1000);
-const expires = new Date((printedAtSec + 30 * 60) * 1000);
+const expires = new Date((printedAtSec + 3 * 60 * 60) * 1000);
 const time = (d) => d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
 // Unique per run, so printing a new batch never hits "already submitted".
 const stamp = now.toISOString().replace(/\D/g, "").slice(2, 12);
@@ -85,7 +85,7 @@ for (const [i, order] of ORDERS.entries()) {
     <hr>
     <div class="c bold">Rate your meal</div>
     <div class="qr">${qrSvg}</div>
-    <div class="c">Scan within 30 minutes (until ${esc(time(expires))})</div>
+    <div class="c">Scan within 3 hours (until ${esc(time(expires))})</div>
     <div class="c">Thank you for dining with us</div>
   </section>`);
 }
