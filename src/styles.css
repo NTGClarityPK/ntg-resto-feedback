@@ -1,25 +1,26 @@
-/* Palette: Bubblegum. Change the variables here to restyle the whole app. */
+/* Palette: Resto red, rgb(244, 67, 54). Change the variables here to restyle the whole app. */
 :root {
-  --bg: #fff0f6;
+  --bg: #fff6f5;
   --surface: #ffffff;
-  --ink: #3a0c2a;
-  --muted: #8a5d7a;
-  --line: #f5d3e3;
-  --accent: #ff3d7f;
+  --ink: #2d1513;
+  --muted: #7d5a56;
+  --line: #f6dad6;
+  --accent: #f44336;       /* brand red: buttons, selected borders, progress */
+  --accent-text: #c62828;  /* darker red for red text on light backgrounds, so it stays readable */
   --on-accent: #ffffff;
-  --accent-soft: #ffd6e8;
-  --okay-soft: #fce8f1;
-  --okay-line: #d9a6bf;
-  --warn: #0e7c86;
-  --warn-soft: #d3f3f6;
-  --shadow: 0 1px 0 rgba(58, 12, 42, 0.05), 0 12px 28px -14px rgba(255, 61, 127, 0.35);
+  --accent-soft: #ffe3e0;
+  --okay-soft: #fdf0ee;
+  --okay-line: #e2b3ad;
+  --warn: #b45309;         /* amber for warnings and "Not good", so they don't blend into the brand red */
+  --warn-soft: #fdf1dc;
+  --shadow: 0 1px 0 rgba(45, 21, 19, 0.05), 0 12px 28px -14px rgba(244, 67, 54, 0.35);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
-  font-family: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
@@ -72,7 +73,7 @@ button, input, textarea { font: inherit; }
 }
 .brand { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
 .timer {
-  font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+  font-size: 12px; font-weight: 700; color: var(--accent-text); background: var(--accent-soft);
   padding: 6px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
 }
 .timer.low { color: var(--warn); background: var(--warn-soft); }
@@ -96,7 +97,7 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
 }
 
 .hero { display: flex; align-items: center; justify-content: center; height: 150px; margin: 6px 0 12px; }
-.hero-mark { width: 120px; height: 120px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.hero-mark { width: 120px; height: 120px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
 .meta { display: flex; flex-direction: column; gap: 10px; margin: 22px 0; }
 .meta div { display: flex; align-items: center; gap: 12px; font-size: 14px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
@@ -126,7 +127,7 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
   height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
   font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
-.opt.sel-good { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.opt.sel-good { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); }
 .opt.sel-okay { background: var(--okay-soft); border-color: var(--okay-line); }
 .opt.sel-bad { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
 
@@ -147,7 +148,7 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
 .add-row input {
   flex: 1; height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 0 14px; color: var(--ink); outline: none;
 }
-.add-row input:focus { border-color: var(--accent); }
+.add-row input:focus { border-color: var(--accent-text); }
 .add-btn { height: 48px; padding: 0 18px; border-radius: 14px; border: 0; background: var(--ink); color: var(--bg); font-weight: 700; cursor: pointer; }
 .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -157,21 +158,21 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
   border: 1px solid var(--line); background: var(--bg); border-radius: 14px; padding: 10px 4px 8px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.face-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.face-btn.on { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); }
 
 textarea {
   width: 100%; min-height: 150px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
   padding: 14px; font-size: 15px; color: var(--ink); resize: none; outline: none;
 }
-textarea:focus { border-color: var(--accent); }
+textarea:focus { border-color: var(--accent-text); }
 textarea::placeholder { color: var(--muted); }
 .counter { text-align: right; font-size: 12px; color: var(--muted); margin-top: 6px; }
 
-.badge { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.badge { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
 .badge.warn { background: var(--warn-soft); color: var(--warn); }
 
 .spinner {
-  width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent);
+  width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent-text);
   animation: spin 0.9s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -200,4 +201,8 @@ textarea::placeholder { color: var(--muted); }
   h1 { font-size: 24px; margin-bottom: 4px; }
   .progress { margin-bottom: 10px; }
   .sub.spaced { margin-bottom: 8px; }
+  .sub { font-size: 14px; line-height: 1.4; }
+  .cat-label { font-size: 15px; }
+  .stack { gap: 6px; }
 }
+.close-row { width: 100%; max-width: 320px; margin-top: 18px; }

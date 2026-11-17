@@ -26,8 +26,16 @@ export const CATEGORY_GROUPS: { title: string; sub: string; items: Category[] }[
   },
 ];
 
+// "What went wrong?" options. Each one fits any item on the menu: a curry, a dessert or a drink.
 export const BAD_TAGS = [
-  "Cold", "Too salty", "Too spicy", "Undercooked", "Oily", "Small portion", "Came late", "Wrong item",
+  "Didn't taste right", // too salty, too sweet, too spicy, bland...
+  "Not fresh",
+  "Wrong temperature",  // hot food served cold, ice cream melted, warm drink...
+  "Not cooked right",   // under or over done, soggy, burnt, watery...
+  "Small portion",
+  "Took too long",
+  "Wrong item",
+  "Hygiene issue",
 ] as const;
 
 export interface DishItem {

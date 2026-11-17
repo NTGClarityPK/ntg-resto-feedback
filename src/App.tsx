@@ -9,7 +9,16 @@ const RESTAURANT = "Umair's Test Kitchen";
 
 type Phase =
   | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
-  | "dishes" | "experience" | "review" | "sending" | "thanks";
+  | "dishes" | "experience" | "review" | "sending" | "thanks" | "closed";
+
+// Browsers only let a page close a tab that a script opened. A tab opened by scanning a QR
+// code usually stays open, so if it is still there a moment later, show a final screen instead.
+function closeScreen(onStillOpen: () => void) {
+  window.close();
+  window.setTimeout(() => {
+    if (!window.closed) onStillOpen();
+  }, 300);
+}
 
 type BlockReason = "missing" | "invalid" | "expired" | "already_submitted" | "limit_reached" | "error";
 
@@ -394,6 +403,20 @@ export default function App() {
         <Centered icon={<CheckIcon />} title="Thank you">
           <p className="sub narrow">Your feedback for this table has been sent to {brand}.</p>
           <p className="sub small narrow">This bill is now closed for feedback.</p>
+          <div className="close-row">
+            <button className="btn" onClick={() => closeScreen(() => setPhase("closed"))}>Close</button>
+          </div>
+        </Centered>
+      </Shell>
+    );
+  }
+
+  // Shown when the browser refuses to close the tab (see closeScreen).
+  if (phase === "closed") {
+    return (
+      <Shell>
+        <Centered icon={<CheckIcon />} title="All done">
+          <p className="sub narrow">You can close this tab now. Thank you for dining with us!</p>
         </Centered>
       </Shell>
     );
