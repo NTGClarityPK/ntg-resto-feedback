@@ -2,7 +2,7 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { verifyQrToken, type QrPayload } from "./qr.ts";
 
-export const WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours from print time
+export const WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours from print time
 export const DEVICE_DAILY_LIMIT = 2;
 export const IP_HOURLY_LIMIT = 20;
 

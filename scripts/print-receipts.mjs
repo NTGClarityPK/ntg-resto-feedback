@@ -5,12 +5,12 @@
 //   $env:QR_SIGNING_KEY = '<same value as the Supabase secret>'
 //   npm run receipts -- https://resto-feedback.netlify.app       -> 3 receipts for the live site
 //   npm run receipts                                             -> this PC's Wi-Fi address, port 5173
-//   npm run receipts -- https://resto-feedback.netlify.app --design=chef -> one frame for all
-//                                                     (plate, handi or chef; default: one of each)
+//   npm run receipts -- https://resto-feedback.netlify.app --design=chef -> another frame
+//                                                     (handi is the default; also plate, chef)
 //   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
 //                                                                    leaves the items out (photo step)
 // Then open test-receipts.html in Chrome, press Ctrl+P and pick the thermal printer.
-// Each QR works for 3 hours from the moment this script runs, and each one can be used once.
+// Each QR works for 24 hours from the moment this script runs, and each one can be used once.
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
@@ -98,16 +98,16 @@ const FRAMES = {
     <rect x="66" y="42.1" width="6" height="2.2" rx="1.1" fill="#000"/>`) },
 
   // 2. Handi: the code inside a cooking pot with a lid, side handles and steam.
-  handi: { width: 72, qrMm: 53, draw: (qr) => svgWrap("0 -6 72 92", `
+  //    The pot's base sits just below the code (its rounded corners stay clear of it).
+  handi: { width: 72, qrMm: 53, draw: (qr) => svgWrap("0 -6 72 83", `
     <path d="M26 6 q-1.6 -2 0 -4 q1.6 -2 0 -4" fill="none" stroke="#000" stroke-width="1.2" stroke-linecap="round"/>
     <path d="M46 6 q-1.6 -2 0 -4 q1.6 -2 0 -4" fill="none" stroke="#000" stroke-width="1.2" stroke-linecap="round"/>
     <circle cx="36" cy="4.6" r="2.2" fill="#000"/>
     <path d="M10 14 Q36 -1 62 14 Z" fill="#000"/>
-    <text x="36" y="12.4" text-anchor="middle" font-size="3.6" font-weight="900" fill="#fff">HOW WAS IT?</text>
     <rect x="4" y="14" width="64" height="4" rx="2" fill="#000"/>
     <path d="M8 28 C0.5 28 0.5 42 8 42" fill="none" stroke="#000" stroke-width="2.2"/>
     <path d="M64 28 C71.5 28 71.5 42 64 42" fill="none" stroke="#000" stroke-width="2.2"/>
-    <path d="M8 18 V72 Q8 84 20 84 H52 Q64 84 64 72 V18" fill="#fff" stroke="#000" stroke-width="2"/>
+    <path d="M8 18 V70 Q8 75.5 13.5 75.5 H58.5 Q64 75.5 64 70 V18" fill="#fff" stroke="#000" stroke-width="2"/>
     ${placeQr(qr, 9.5, 19.5, 53)}`) },
 
   // 3. Chef: the code is the chef's face, with a puffy chef's hat and a bow tie.
@@ -133,7 +133,7 @@ const pad = (n) => String(n).padStart(2, "0");
 
 const now = new Date();
 const printedAtSec = Math.floor(now.getTime() / 1000);
-const expires = new Date((printedAtSec + 3 * 60 * 60) * 1000);
+const expires = new Date((printedAtSec + 24 * 60 * 60) * 1000);
 const time = (d) => d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
 // Resto's own formats: 22/10/2026, 10:29:22 and MAIN-20261022-0004.
 const stampDate = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -156,9 +156,8 @@ for (const [i, order] of ORDERS.entries()) {
     st: subtotal, tx: tax, sc: 0, dc: 0, tot: subtotal + tax,
   });
   const plainQr = await QRCode.toString(link, { type: "svg", margin: 3, errorCorrectionLevel: "L" });
-  // Each test receipt gets a different frame so all three can be compared on paper,
-  // unless --design=plate|handi|chef picks one for all.
-  const design = designArg || DESIGNS[i % DESIGNS.length];
+  // Handi is the chosen frame. --design=plate or --design=chef prints another one instead.
+  const design = designArg || "handi";
   const frame = FRAMES[design];
   const feedbackQr = frame.draw(plainQr);
   // Stand-in for the SRB tax QR, so test prints have both codes in their real positions.
@@ -200,7 +199,8 @@ for (const [i, order] of ORDERS.entries()) {
          and a gap, so the camera frames one code at a time. -->
     <hr class="gap">
     <div class="c feedback-title">RATE YOUR MEAL</div>
-    <div class="c">Scan within 3 hours (till ${esc(time(expires))})</div>
+    <div class="c">We'd love to hear from you!</div>
+    <div class="c small">Feedback is open for 24 hours</div>
     <div class="qr feedback" style="width: ${frame.width}mm">${feedbackQr}</div>
     <div class="c small">Hold your phone close to this code</div>
     <hr>

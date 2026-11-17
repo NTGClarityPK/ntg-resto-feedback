@@ -11,7 +11,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
                        │
                        ▼
             Supabase Edge Functions (only writers/readers)
-              ├─ session         verify QR signature, 3-hour window, limits; returns the receipt
+              ├─ session         verify QR signature, 24-hour window, limits; returns the receipt
               ├─ read-bill       photo → dish names (OCR via Claude), only for bills over 10 items
               ├─ submit-feedback validate, enforce one-per-bill, device + IP limits, insert
               ├─ export-feedback Resto pulls rows that match its own orders
@@ -28,7 +28,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
 | QR is signed (HMAC-SHA256). Tenant, order and receipt contents cannot be forged or edited | `_shared/qr.ts` `verifyQrToken` |
 | At most 10 items in a QR; longer bills leave the items out and the guest photographs the bill | `MAX_RECEIPT_ITEMS` |
 | With a full-receipt QR, guests can only rate dishes that are on that receipt | `submit-feedback` |
-| 3 hours from print time, read from the signed payload | `windowState` |
+| 24 hours from print time, read from the signed payload | `windowState` |
 | One feedback per tenant + order | unique constraint + pre-check |
 | Two submissions per device per day | `DEVICE_DAILY_LIMIT`, device id is hashed |
 | 20 submissions per network per hour (generous for shared Wi-Fi) | `IP_HOURLY_LIMIT`, IP is hashed |
@@ -50,7 +50,7 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
      "v": 2,
      "t": "tenant-1",              // tenant id (required)
      "o": "ORD-2026-000123",       // order id (required)
-     "p": 1794824872,              // receipt print time, unix seconds (required; starts the 3-hour window)
+     "p": 1794824872,              // receipt print time, unix seconds (required; starts the 24-hour window)
      "r": "Umair's Test Kitchen",  // restaurant name shown in the app
      "tb": "T-03",                 // table
      "sv": "Ali",                  // server
