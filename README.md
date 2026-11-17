@@ -64,7 +64,7 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
 2. `payload` = base64url (no padding) of the **raw DEFLATE** compression of that JSON (zlib `deflateRaw`, level 9).
 3. `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, `"2." + payload`).
 
-Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 10-item receipt makes a QR of about 77×77 squares. Printed at 32mm (about 0.4mm per square) it scans well and leaves room for the SRB tax QR beside it on 80mm paper; do not go below 30mm (3 printer dots per square at 203 dpi). Building and signing it takes a few milliseconds.
+Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 10-item receipt makes a QR of about 77×77 squares. Print it about 58mm wide, in its own section below the SRB tax QR with a clear heading and at least 25mm of space between the two codes: smaller sizes (32–36mm) were hard to scan on real thermal prints. Building and signing it takes a few milliseconds.
 
 The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then photographs the bill.
 

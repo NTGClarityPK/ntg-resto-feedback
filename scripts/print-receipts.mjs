@@ -165,10 +165,11 @@ const html = `<!doctype html>
   .feedback-title { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
   .qr { margin: 2mm auto; }
   .qr svg { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
-  /* SRB stand-in at about the size on Resto's receipt. The feedback QR is a little larger,
-     so cameras tend to prefer it, and up to 10 items that is about 0.45mm per square. */
+  /* SRB stand-in at about the size on Resto's receipt. The feedback QR is printed at 58mm:
+     smaller sizes (32-36mm) proved hard to scan on real thermal prints. Being much larger
+     than the SRB code also makes cameras prefer it. */
   .qr.srb { width: 28mm; }
-  .qr.feedback { width: 36mm; }
+  .qr.feedback { width: 58mm; }
   @media screen { body { background: #eee; } .receipt { background: #fff; margin: 12px auto; padding: 4mm; width: calc(72mm + 8mm); } }
 </style></head>
 <body>${receipts.join("\n")}</body></html>`;
