@@ -5,7 +5,6 @@ import { extractQrToken, readQrFromPhoto } from "./qrScan";
 import { AlertIcon, Centered, CheckIcon, Face, Progress, TopBar } from "./components";
 import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
-const RESTAURANT = "Umair's Test Kitchen";
 
 type Phase =
   | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
@@ -91,7 +90,8 @@ export default function App() {
   const currentDish = dishes[dishIdx];
   // True when the dishes came from the signed QR; the photo and confirm steps are skipped.
   const receiptDishes = (session?.receipt?.dishes.length ?? 0) > 0;
-  const brand = session?.receipt?.restaurant || RESTAURANT;
+  // Restaurant name from the signed receipt QR. Older QRs have none, and then no name is shown.
+  const brand = session?.receipt?.restaurant || "";
 
   async function handlePhoto(file: File) {
     setNotice(null);
@@ -401,7 +401,7 @@ export default function App() {
     return (
       <Shell>
         <Centered icon={<CheckIcon />} title="Thank you">
-          <p className="sub narrow">Your feedback for this table has been sent to {brand}.</p>
+          <p className="sub narrow">Your feedback for this table has been sent to {brand || "the restaurant"}.</p>
           <p className="sub small narrow">This bill is now closed for feedback.</p>
           <div className="close-row">
             <button className="btn" onClick={() => closeScreen(() => setPhase("closed"))}>Close</button>

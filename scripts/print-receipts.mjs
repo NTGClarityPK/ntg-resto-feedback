@@ -5,6 +5,8 @@
 //   $env:QR_SIGNING_KEY = '<same value as the Supabase secret>'
 //   npm run receipts -- https://resto-feedback.netlify.app       -> 3 receipts for the live site
 //   npm run receipts                                             -> this PC's Wi-Fi address, port 5173
+//   npm run receipts -- https://resto-feedback.netlify.app --restaurant="Karachi Grill"
+//                                                     -> the restaurant name on the receipt and in the app
 //   npm run receipts -- https://resto-feedback.netlify.app --design=chef -> another frame
 //                                                     (handi is the default; also plate, chef)
 //   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
@@ -18,7 +20,9 @@ import { deflateRawSync } from "node:zlib";
 import QRCode from "qrcode";
 
 const TENANT_ID = "tenant-test";
-const RESTAURANT = "Restoooooo";   // same test restaurant name as Resto's sample receipt
+// Restaurant name printed at the top of the receipt and shown in the feedback app (it travels
+// in the QR). Set it with --restaurant="Karachi Grill"; the default copies Resto's sample receipt.
+const RESTAURANT = (process.argv.find((a) => a.startsWith("--restaurant="))?.slice("--restaurant=".length) || "Restoooooo").trim().slice(0, 80);
 const CURRENCY = "PKR";
 const TAX_RATE = 0.08;             // FBR @ 8% on card payments, as on Resto's receipt
 const MAX_QR_ITEMS = 10;           // must match MAX_RECEIPT_ITEMS on the server

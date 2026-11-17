@@ -51,7 +51,7 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
      "t": "tenant-1",              // tenant id (required)
      "o": "ORD-2026-000123",       // order id (required)
      "p": 1794824872,              // receipt print time, unix seconds (required; starts the 24-hour window)
-     "r": "Umair's Test Kitchen",  // restaurant name shown in the app
+     "r": "Karachi Grill",         // restaurant name (required): shown at the top of the feedback app
      "tb": "T-03",                 // table
      "sv": "Ali",                  // server
      "cur": "PKR",
