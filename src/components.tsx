@@ -1,86 +1,76 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Sentiment } from "./types";
 
-export function Face({ kind, size = 34 }: { kind: Sentiment; size?: number }) {
+// Face icons from the design, in its three moods.
+export function Face({ kind, size = 26 }: { kind: Sentiment; size?: number }) {
   const mouth =
-    kind === "happy" ? "M9 15c1.6 1.6 4.4 1.6 6 0" :
-    kind === "neutral" ? "M9 15.5h6" :
-    "M9 16.5c1.6-1.4 4.4-1.4 6 0";
+    kind === "happy" ? "M8.5 14.3c.9 1.3 2.1 1.9 3.5 1.9s2.6-.6 3.5-1.9" :
+    kind === "neutral" ? "M8.8 15h6.4" :
+    "M8.5 16.4c.9-1.3 2.1-1.9 3.5-1.9s2.6.6 3.5 1.9";
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" aria-hidden="true">
       <circle cx="12" cy="12" r="9.5" />
-      <circle cx="9" cy="10" r=".6" fill="currentColor" />
-      <circle cx="15" cy="10" r=".6" fill="currentColor" />
       <path d={mouth} />
+      <circle cx="9" cy="9.8" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="9.8" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-export function CheckIcon() {
+export function ArrowIcon() {
   return (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-export function AlertIcon() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden="true">
-      <path d="M12 8v5M12 16.5v.01" />
-      <circle cx="12" cy="12" r="9" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
 
 export function BackIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
-      <path d="M15 6l-6 6 6 6" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="square" aria-hidden="true">
+      <path d="M15 5l-7 7 7 7" />
     </svg>
   );
 }
 
-// Bill, dishes, Food & Service, Place & Value, review.
-const STEPS = 5;
+export const pad2 = (n: number) => (n < 10 ? "0" : "") + n;
 
-export function Progress({ step }: { step: number }) {
+// Back button, one segment per step, and "03/06". step is 1-based; 0 shows no step yet.
+export function Header({ onBack, step, total }: { onBack: () => void; step?: number; total?: number }) {
   return (
-    <div className="progress" aria-label={`Step ${step + 1} of ${STEPS}`}>
-      {Array.from({ length: STEPS }, (_, i) => (
-        <span key={i} className={i <= step ? "on" : ""} />
-      ))}
+    <div className="hdr">
+      <button className="iconbtn" aria-label="Go back" onClick={onBack}><BackIcon /></button>
+      {total ? (
+        <>
+          <div className="segs" aria-label={`Step ${step} of ${total}`}>
+            {Array.from({ length: total }, (_, i) => {
+              const n = i + 1;
+              const cls = step && n < step ? "seg done" : n === step ? "seg cur" : "seg";
+              return <span key={n} className={cls} />;
+            })}
+          </div>
+          <span className="mono b">{pad2(step ?? 0)}/{pad2(total)}</span>
+        </>
+      ) : <div className="grow" />}
     </div>
   );
 }
 
-export function TopBar({ onBack, timer, brand }: { onBack?: () => void; timer?: string; brand: string }) {
-  const low = timer !== undefined && parseSeconds(timer) < 5 * 60;
+// "Restaurant ........ Table 01" line at the top of the welcome and thank-you screens.
+export function BrandLine({ brand, table }: { brand: string; table: string | null | undefined }) {
   return (
-    <div className="topbar">
-      {onBack ? (
-        <button className="iconbtn" onClick={onBack} aria-label="Back"><BackIcon /></button>
-      ) : (
-        <span className="brand">{brand}</span>
-      )}
-      {timer !== undefined && (
-        <span className={`timer ${low ? "low" : ""}`} aria-live="off">{timer} left</span>
-      )}
-    </div>
+    <>
+      <span className="mono brand">{brand}</span>
+      {table ? <span className="mono">Table {table}</span> : <span />}
+    </>
   );
 }
 
-function parseSeconds(mmss: string): number {
-  const [m, s] = mmss.split(":").map(Number);
-  return m * 60 + s;
-}
-
-export function Centered({ icon, tone = "ok", title, children }: { icon: ReactNode; tone?: "ok" | "warn"; title: string; children?: ReactNode }) {
+export function Row({ label, value, valueStyle }: { label: string; value: ReactNode; valueStyle?: CSSProperties }) {
   return (
-    <div className="screen center fade">
-      <div className={`badge ${tone === "warn" ? "warn" : ""}`}>{icon}</div>
-      <h1>{title}</h1>
-      {children}
-    </div>
+    <div className="row"><span>{label}</span><span className="lead" /><span className="v" style={valueStyle}>{value}</span></div>
   );
 }
+
+// Inline style for a staggered .rise animation.
+export const delay = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });

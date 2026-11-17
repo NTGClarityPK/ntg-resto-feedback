@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { checkSession, readBill, submitFeedback } from "./api";
 import { shrinkToJpeg } from "./image";
 import { extractQrToken, readQrFromPhoto } from "./qrScan";
-import { AlertIcon, Centered, CheckIcon, Face, Progress, TopBar } from "./components";
+import { ArrowIcon, BrandLine, Face, Header, Row, delay, pad2 } from "./components";
 import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
 
@@ -21,14 +21,17 @@ function closeScreen(onStillOpen: () => void) {
 
 type BlockReason = "missing" | "invalid" | "expired" | "already_submitted" | "limit_reached" | "error";
 
-const BLOCK_COPY: Record<BlockReason, { title: string; body: string; warn: boolean }> = {
-  missing: { title: "Scan your receipt", body: "Scan the QR code printed on your bill to share feedback.", warn: false },
-  invalid: { title: "This QR code isn't valid", body: "We couldn't verify this receipt. Please scan the QR code printed on your bill.", warn: true },
-  expired: { title: "This receipt has expired", body: "Feedback can be given within 24 hours of your visit. Thank you for dining with us.", warn: true },
-  already_submitted: { title: "Already submitted", body: "You've already shared feedback for this bill. Thank you!", warn: false },
-  limit_reached: { title: "Daily limit reached", body: "This device has already sent its feedback for today. Please try again tomorrow.", warn: true },
-  error: { title: "Something went wrong", body: "We couldn't load this bill. Please try scanning again.", warn: true },
+const BLOCK_COPY: Record<BlockReason, { title: string; body: string }> = {
+  missing: { title: "Scan your receipt", body: "Scan the QR code printed on your bill to share feedback." },
+  invalid: { title: "This QR code isn't valid", body: "We couldn't verify this receipt. Please scan the QR code printed on your bill." },
+  expired: { title: "This receipt has expired", body: "Feedback can be given within 24 hours of your visit. Thank you for dining with us." },
+  already_submitted: { title: "Already submitted", body: "You've already shared feedback for this bill. Thank you!" },
+  limit_reached: { title: "Daily limit reached", body: "This device has already sent its feedback for today. Please try again tomorrow." },
+  error: { title: "Something went wrong", body: "We couldn't load this bill. Please try scanning again." },
 };
+
+// Pause after a Good or Okay pick so the selection registers before the next dish appears.
+const ADVANCE_MS = 560;
 
 let idCounter = 0;
 const newId = () => `d${Date.now()}-${idCounter++}`;
@@ -50,14 +53,15 @@ export default function App() {
   const [ocrText, setOcrText] = useState("");
   const [dishes, setDishes] = useState<DishItem[]>([]);
   const [dishIdx, setDishIdx] = useState(0);
-  const [visitIdx, setVisitIdx] = useState(0); // which of the two visit-rating screens is showing
+  const [visitIdx, setVisitIdx] = useState(0); // which of the visit-rating screens is showing
   const [newDish, setNewDish] = useState("");
   const [categories, setCategories] = useState<Partial<Record<CategoryId, Sentiment>>>({});
   const [review, setReview] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
-  const advancing = useRef(false);
+  const advanceTimer = useRef<number | undefined>(undefined);
 
   const block = (r: BlockReason) => { setReason(r); setPhase("blocked"); };
+  const cancelAdvance = () => window.clearTimeout(advanceTimer.current);
 
   // Check the signed QR once on load.
   useEffect(() => {
@@ -81,6 +85,8 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => cancelAdvance, []);
+
   // No countdown is shown to the guest. The bill still closes when its window ends.
   const remainingMs = session ? new Date(session.expiresAt).getTime() - now : 0;
   useEffect(() => {
@@ -92,6 +98,10 @@ export default function App() {
   const receiptDishes = (session?.receipt?.dishes.length ?? 0) > 0;
   // Restaurant name from the signed receipt QR. Older QRs have none, and then no name is shown.
   const brand = session?.receipt?.restaurant || "";
+  const table = session?.receipt?.table;
+
+  // One step per dish, one per visit-rating screen, and the review.
+  const totalSteps = dishes.length + CATEGORY_GROUPS.length + 1;
 
   async function handlePhoto(file: File) {
     setNotice(null);
@@ -128,15 +138,9 @@ export default function App() {
 
   function setRating(face: FaceKind) {
     if (!currentDish) return;
+    cancelAdvance();
     setDishes((list) => list.map((d, i) => (i === dishIdx ? { ...d, rating: face, tags: face === "bad" ? d.tags : [] } : d)));
-    if (face !== "bad" && !advancing.current) {
-      advancing.current = true;
-      // Brief beat so the selection registers before the next dish appears.
-      setTimeout(() => {
-        advancing.current = false;
-        goNextDish();
-      }, 260);
-    }
+    if (face !== "bad") advanceTimer.current = window.setTimeout(goNextDish, ADVANCE_MS);
   }
 
   function toggleTag(tag: string) {
@@ -148,6 +152,7 @@ export default function App() {
   }
 
   function goNextDish() {
+    cancelAdvance();
     if (dishIdx < dishes.length - 1) setDishIdx(dishIdx + 1);
     else { setVisitIdx(0); setPhase("experience"); }
   }
@@ -179,17 +184,20 @@ export default function App() {
   // ---------- screens ----------
 
   if (phase === "boot") {
-    return <Shell><div className="screen center"><p className="sub">Loading…</p></div></Shell>;
+    return <Shell><div className="screen center"><p className="mono muted">Loading…</p></div></Shell>;
   }
 
   if (phase === "blocked") {
     const c = BLOCK_COPY[reason];
     return (
       <Shell>
-        <Centered icon={<AlertIcon />} tone={c.warn ? "warn" : "ok"} title={c.title}>
-          <p className="sub narrow">{c.body}</p>
-          {reason !== "limit_reached" && <ScanQrButton />}
-        </Centered>
+        <div className="screen pad-b">
+          <div className="grow" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 18 }}>
+            <h1 className="rise display h-screen">{c.title}<span className="red">.</span></h1>
+            <p className="rise lede" style={delay(80)}>{c.body}</p>
+          </div>
+          {reason !== "limit_reached" && <div className="rise" style={delay(160)}><ScanQrButton /></div>}
+        </div>
       </Shell>
     );
   }
@@ -197,23 +205,28 @@ export default function App() {
   if (phase === "landing" && session) {
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar brand={brand} />
-          <div className="hero"><div className="hero-mark"><Face kind="happy" size={72} /></div></div>
-          <div className="eyebrow">{session.receipt?.table ? `Table ${session.receipt.table}` : "Table feedback"}</div>
-          <h1>How was your meal?</h1>
-          <p className="sub">
-            {receiptDishes
-              ? `Rate the ${dishes.length === 1 ? "dish" : `${dishes.length} dishes`} on your bill and tell us about your visit. It takes about a minute.`
-              : "Snap a photo of your bill, rate what you ordered, and tell us about your visit. It takes about a minute."}
-          </p>
-          <div className="meta">
-            <div><span className="dot" />Skip anything you like</div>
-            <div><span className="dot" />One feedback per bill</div>
-            <div><span className="dot" />Your review goes to the restaurant only</div>
+        <div className="screen pad-b">
+          <div className="rise" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 14 }}>
+            <BrandLine brand={brand} table={table} />
           </div>
-          <div className="footer">
-            <button className="btn" onClick={() => (receiptDishes ? startRating() : setPhase("scan"))}>Start</button>
+          <hr className="rule rise" />
+          <div className="grow" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
+            <h1 className="rise display h-hero" style={delay(90)}>How was your meal<span className="red">?</span></h1>
+            <p className="rise" style={{ ...delay(170), margin: 0, fontSize: 17, lineHeight: 1.5, color: "var(--muted)" }}>
+              {receiptDishes
+                ? `Rate the ${dishes.length === 1 ? "dish" : `${dishes.length} dishes`} on your bill and tell us about your visit. It takes about a minute.`
+                : "Snap a photo of your bill, rate what you ordered, and tell us about your visit. It takes about a minute."}
+            </p>
+            <div className="rise receipt" style={delay(250)}>
+              <Row label="Dishes to rate" value={receiptDishes ? pad2(dishes.length) : "From bill"} />
+              <Row label="Time" value="~1 min" />
+              <Row label="Skip anything" value="Yes" />
+              <Row label="Feedback per bill" value="01" />
+              <Row label="Seen by" value="Restaurant only" valueStyle={{ color: "var(--accent-text)" }} />
+            </div>
+          </div>
+          <div className="rise" style={delay(340)}>
+            <button className="cta" onClick={() => (receiptDishes ? startRating() : setPhase("scan"))}>Start<ArrowIcon /></button>
           </div>
         </div>
       </Shell>
@@ -223,14 +236,15 @@ export default function App() {
   if (phase === "scan") {
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar onBack={() => setPhase("landing")} brand={brand} />
-          <Progress step={0} />
-          <h1>Scan your bill</h1>
-          <p className="sub">Take a clear photo of the bill so we can find what you ordered.</p>
-          {notice && <p className="notice">{notice}</p>}
-          <div className="footer">
-            <label className="btn file-btn">
+        <Header onBack={() => setPhase("landing")} />
+        <div className="screen">
+          <h1 className="rise display h-screen">Scan your bill<span className="red">.</span></h1>
+          <p className="rise lede" style={delay(60)}>Take a clear photo of the bill so we can find what you ordered.</p>
+          <hr className="rule rise" style={{ ...delay(100), marginTop: 20 }} />
+          {notice && <p className="notice rise" role="alert">{notice}</p>}
+          <div className="grow" />
+          <div className="rise actions" style={delay(200)}>
+            <label className="cta file-btn">
               Take photo
               <input
                 type="file"
@@ -250,10 +264,10 @@ export default function App() {
   if (phase === "reading") {
     return (
       <Shell>
-        <div className="screen center fade">
+        <div className="screen center" style={{ alignItems: "center", textAlign: "center", gap: 18 }}>
           <div className="spinner" aria-hidden="true" />
-          <h1>Reading your bill…</h1>
-          <p className="sub">This takes a few seconds.</p>
+          <h1 className="rise display h-screen">Reading your bill<span className="red">…</span></h1>
+          <p className="rise mono muted" style={delay(60)}>This takes a few seconds</p>
         </div>
       </Shell>
     );
@@ -262,14 +276,15 @@ export default function App() {
   if (phase === "confirm") {
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar onBack={() => setPhase("scan")} brand={brand} />
-          <Progress step={0} />
-          <h1>Your dishes</h1>
-          <p className="sub">Remove anything that isn't on your bill, or add what we missed.</p>
+        <Header onBack={() => setPhase("scan")} />
+        <div className="screen">
+          <h1 className="rise display h-screen">Your dishes<span className="red">.</span></h1>
+          <p className="rise lede" style={delay(60)}>Remove anything that isn't on your bill, or add what we missed.</p>
+          <hr className="rule rise" style={{ ...delay(100), marginTop: 20, marginBottom: 20 }} />
+          {notice && <p className="notice" style={{ marginTop: 0, marginBottom: 16 }}>{notice}</p>}
           <div className="chips">
             {dishes.map((d) => (
-              <span key={d.id} className="chip">
+              <span key={d.id} className="chip dish-chip">
                 {d.name}
                 <button aria-label={`Remove ${d.name}`} onClick={() => removeDish(d.id)}>×</button>
               </span>
@@ -279,8 +294,9 @@ export default function App() {
             <input value={newDish} onChange={(e) => setNewDish(e.target.value)} placeholder="Add a dish" maxLength={80} />
             <button type="submit" className="add-btn" disabled={!newDish.trim()}>Add</button>
           </form>
-          <div className="footer">
-            <button className="btn" onClick={startRating}>{dishes.length ? "Rate my dishes" : "Continue"}</button>
+          <div className="grow" />
+          <div style={{ marginTop: 20 }}>
+            <button className="cta" onClick={startRating}>{dishes.length ? "Rate my dishes" : "Continue"}<ArrowIcon /></button>
           </div>
         </div>
       </Shell>
@@ -288,34 +304,60 @@ export default function App() {
   }
 
   if (phase === "dishes" && currentDish) {
+    const isLast = dishIdx >= dishes.length - 1;
+    const back = () => {
+      cancelAdvance();
+      if (dishIdx > 0) setDishIdx(dishIdx - 1);
+      else setPhase(receiptDishes ? "landing" : "confirm");
+    };
+    const opts: { face: FaceKind; label: string; letter: string; mood: Sentiment }[] = [
+      { face: "good", label: "Good", letter: "A", mood: "happy" },
+      { face: "okay", label: "Okay", letter: "B", mood: "neutral" },
+      { face: "bad", label: "Not good", letter: "C", mood: "sad" },
+    ];
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar onBack={() => (dishIdx > 0 ? setDishIdx(dishIdx - 1) : setPhase(receiptDishes ? "landing" : "confirm"))} brand={brand} />
-          <Progress step={1} />
-          <div className="eyebrow">Dish {dishIdx + 1} of {dishes.length}</div>
-          <h1 className="h1-sm">{currentDish.name}</h1>
-          <p className="sub spaced">How was it?</p>
-          <div className="card stack-14">
-            <div className="seg">
-              <RateButton face="good" label="Good" selected={currentDish.rating === "good"} onClick={() => setRating("good")} />
-              <RateButton face="okay" label="Okay" selected={currentDish.rating === "okay"} onClick={() => setRating("okay")} />
-              <RateButton face="bad" label="Not good" selected={currentDish.rating === "bad"} onClick={() => setRating("bad")} />
-            </div>
-            {currentDish.rating === "bad" && (
-              <div>
-                <div className="eyebrow tight">What went wrong? (optional)</div>
-                <div className="tags">
-                  {BAD_TAGS.map((t) => (
-                    <button key={t} className={`tag ${currentDish.tags.includes(t) ? "on" : ""}`} onClick={() => toggleTag(t)}>{t}</button>
-                  ))}
+        <Header onBack={back} step={dishIdx + 1} total={totalSteps} />
+        <div className="screen" key={dishIdx}>
+          <p className="mono rise muted" style={{ margin: 0 }}>Item {pad2(dishIdx + 1)} / {pad2(dishes.length)}</p>
+          <h1 className="rise display h-screen" style={{ ...delay(60), marginTop: 10 }}>{currentDish.name}</h1>
+          <hr className="rule rise" style={{ ...delay(100), marginTop: 20 }} />
+          <p className="mono rise muted" style={{ ...delay(120), margin: "16px 0 0" }}>How was it?<span className="caret" /></p>
+          <div className="stack">
+            {opts.map((o, j) => {
+              const on = currentDish.rating === o.face;
+              return (
+                <div key={o.face} className="rise" style={delay(160 + j * 70)}>
+                  <button className={on ? "opt on" : "opt"} aria-pressed={on} onClick={() => setRating(o.face)}>
+                    <Face kind={o.mood} size={26} />
+                    <span>{o.label}</span>
+                    <span className="key" aria-hidden="true">{o.letter}</span>
+                  </button>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
-          <div className="footer">
+          {currentDish.rating === "bad" && (
+            <div style={{ marginTop: 22 }}>
+              <p className="mono rise muted" style={{ margin: "0 0 10px" }}>What went wrong? / Optional</p>
+              <div className="chips">
+                {BAD_TAGS.map((t, j) => {
+                  const on = currentDish.tags.includes(t);
+                  return (
+                    <div key={t} className="rise" style={delay(j * 35)}>
+                      <button className={on ? "chip on" : "chip"} aria-pressed={on} onClick={() => toggleTag(t)}>{t}</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="grow" />
+          <div className="actions" style={{ marginTop: 20 }}>
             {currentDish.rating === "bad" && (
-              <button className="btn" onClick={goNextDish}>{dishIdx < dishes.length - 1 ? "Next dish" : "Continue"}</button>
+              <div className="rise">
+                <button className="cta" onClick={goNextDish}>{isLast ? "Continue" : "Next dish"}<ArrowIcon /></button>
+              </div>
             )}
             <button className="link" onClick={skipDish}>Skip this dish</button>
           </div>
@@ -325,45 +367,56 @@ export default function App() {
   }
 
   if (phase === "experience") {
-    // Two screens of three ratings each (steps 3 and 4 of 5).
+    // One screen per group of three visit ratings.
     const group = CATEGORY_GROUPS[visitIdx];
     const lastGroup = visitIdx === CATEGORY_GROUPS.length - 1;
     const next = () => (lastGroup ? setPhase("review") : setVisitIdx(visitIdx + 1));
+    const skip = () => {
+      setCategories((c) => {
+        const out = { ...c };
+        for (const item of group.items) delete out[item.id];
+        return out;
+      });
+      next();
+    };
     const back = () => {
       if (visitIdx > 0) setVisitIdx(visitIdx - 1);
       else if (dishes.length) { setDishIdx(dishes.length - 1); setPhase("dishes"); }
       else setPhase(receiptDishes ? "landing" : "confirm");
     };
+    // "Food & Service" → "Food <red>&</red> Service"
+    const [left, right] = group.title.split(" & ");
     return (
       <Shell>
-        <div className="screen fade" key={visitIdx}>
-          <TopBar onBack={back} brand={brand} />
-          <Progress step={2 + visitIdx} />
-          <h1>{group.title}</h1>
-          <p className="sub spaced">{group.sub} Skip anything you didn't notice.</p>
-          <div className="stack">
-            {group.items.map((c) => (
-              <div key={c.id} className="card stack-12">
-                <div className="cat-label">{c.label}</div>
-                <div className="faces">
-                  {(["happy", "neutral", "sad"] as Sentiment[]).map((k) => (
-                    <button
-                      key={k}
-                      className={`face-btn ${categories[c.id] === k ? "on" : ""}`}
-                      onClick={() => toggleCategory(c.id, k)}
-                      aria-pressed={categories[c.id] === k}
-                    >
-                      <Face kind={k} size={28} />
-                      {k === "happy" ? "Good" : k === "neutral" ? "Okay" : "Poor"}
-                    </button>
-                  ))}
+        <Header onBack={back} step={dishes.length + 1 + visitIdx} total={totalSteps} />
+        <div className="screen" key={visitIdx}>
+          <h1 className="rise display h-screen">
+            {right !== undefined ? <>{left} <span className="red">&amp;</span> {right}</> : group.title}
+          </h1>
+          <p className="rise lede" style={delay(60)}>{group.sub} Skip anything you didn't notice.</p>
+          <hr className="rule rise" style={{ ...delay(100), marginTop: 20 }} />
+          <div className="svc">
+            {group.items.map((c, j) => (
+              <div key={c.id} className="rise" style={delay(140 + j * 90)}>
+                <p className="mono b" style={{ margin: "0 0 8px" }}>{c.label}</p>
+                <div className="segrow">
+                  {(["happy", "neutral", "sad"] as Sentiment[]).map((k) => {
+                    const on = categories[c.id] === k;
+                    return (
+                      <button key={k} className={on ? "opt on" : "opt"} aria-pressed={on} onClick={() => toggleCategory(c.id, k)}>
+                        <Face kind={k} size={20} />
+                        <span>{k === "happy" ? "Good" : k === "neutral" ? "Okay" : "Poor"}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
-          <div className="footer">
-            <button className="btn" onClick={next}>Continue</button>
-            <button className="link" onClick={next}>Skip this step</button>
+          <div className="grow" />
+          <div className="rise actions" style={{ ...delay(420), marginTop: 20 }}>
+            <button className="cta" onClick={next}>Continue</button>
+            <button className="link" onClick={skip}>Skip this step</button>
           </div>
         </div>
       </Shell>
@@ -374,23 +427,34 @@ export default function App() {
     const sending = phase === "sending";
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar onBack={() => { setVisitIdx(CATEGORY_GROUPS.length - 1); setPhase("experience"); }} brand={brand} />
-          <Progress step={4} />
-          <h1>Anything else?</h1>
-          <p className="sub spaced">Optional. Share a short review for the team.</p>
-          <textarea
-            value={review}
-            onChange={(e) => setReview(e.target.value)}
-            maxLength={500}
-            placeholder="Tell us what made your visit memorable, or what we could do better…"
-            disabled={sending}
-          />
-          <div className="counter">{review.length}/500</div>
-          {notice && <p className="notice">{notice}</p>}
-          <div className="footer">
-            <p className="sub small center-text">You can submit once for this bill. {rated > 0 ? `${rated} dish${rated > 1 ? "es" : ""} rated.` : ""}</p>
-            <button className="btn" onClick={send} disabled={sending}>{sending ? "Sending…" : "Submit feedback"}</button>
+        <Header
+          onBack={() => { if (!sending) { setVisitIdx(CATEGORY_GROUPS.length - 1); setPhase("experience"); } }}
+          step={totalSteps}
+          total={totalSteps}
+        />
+        <div className="screen pad-b">
+          <h1 className="rise display h-screen">Anything else<span className="red">?</span></h1>
+          <p className="rise lede" style={delay(60)}>Optional. Share a short review for the team.</p>
+          <div className="rise" style={{ ...delay(140), marginTop: 22 }}>
+            <label htmlFor="mb-review" className="mono b" style={{ display: "block", marginBottom: 8 }}>Note for the team</label>
+            <textarea
+              id="mb-review"
+              value={review}
+              onChange={(e) => setReview(e.target.value.slice(0, 500))}
+              maxLength={500}
+              placeholder="Tell us what made your visit memorable, or what we could do better…"
+              disabled={sending}
+            />
+            <p className="mono muted" style={{ margin: "8px 0 0", textAlign: "right" }}>{review.length}/500</p>
+          </div>
+          {notice && <p className="notice" role="alert">{notice}</p>}
+          <div className="grow" />
+          <hr className="rule rise" style={{ ...delay(220), marginTop: 20 }} />
+          <p className="mono rise muted" style={{ ...delay(240), margin: "12px 0 16px", textAlign: "center", lineHeight: 1.6, letterSpacing: ".06em" }}>
+            You can submit once for this bill. {rated} {rated === 1 ? "dish" : "dishes"} rated.
+          </p>
+          <div className="rise" style={delay(300)}>
+            <button className="cta" onClick={send} disabled={sending}>{sending ? "Sending…" : "Submit feedback"}</button>
           </div>
         </div>
       </Shell>
@@ -400,13 +464,27 @@ export default function App() {
   if (phase === "thanks") {
     return (
       <Shell>
-        <Centered icon={<CheckIcon />} title="Thank you">
-          <p className="sub narrow">Your feedback for this table has been sent to {brand || "the restaurant"}.</p>
-          <p className="sub small narrow">This bill is now closed for feedback.</p>
-          <div className="close-row">
-            <button className="btn" onClick={() => closeScreen(() => setPhase("closed"))}>Close</button>
+        <div className="screen center" style={{ padding: 24 }}>
+          <div className="print ticket">
+            <div className="ticket-head"><BrandLine brand={brand} table={table} /></div>
+            <hr className="rule" style={{ marginTop: 14 }} />
+            <h1 className="display h-done">Thank you<span className="red">.</span></h1>
+            <p style={{ margin: "14px 0 0", fontSize: 16, lineHeight: 1.5, color: "var(--muted)" }}>
+              Your feedback for this table has been sent to {brand ? <strong style={{ color: "var(--ink)" }}>{brand}</strong> : "the restaurant"}.
+            </p>
+            <hr className="rule" style={{ marginTop: 20 }} />
+            <div style={{ marginTop: 10 }}>
+              <Row label="Dishes rated" value={pad2(rated)} />
+              <Row label="Feedback" value="Sent" />
+              <Row label="This bill" value="Closed for feedback" />
+            </div>
+            <div className="stamp stamp-box" aria-hidden="true">RECEIVED</div>
           </div>
-        </Centered>
+          <p className="mono muted rise" style={{ ...delay(1000), margin: "16px 0 0", textAlign: "center" }}>Resto by NTG Clarity</p>
+        </div>
+        <div className="rise" style={{ ...delay(1200), padding: "0 24px 30px" }}>
+          <button className="cta" onClick={() => closeScreen(() => setPhase("closed"))}>Close</button>
+        </div>
       </Shell>
     );
   }
@@ -415,14 +493,21 @@ export default function App() {
   if (phase === "closed") {
     return (
       <Shell>
-        <Centered icon={<CheckIcon />} title="All done">
-          <p className="sub narrow">You can close this tab now. Thank you for dining with us!</p>
-        </Centered>
+        <div className="screen center" style={{ padding: 24 }}>
+          <div className="rise ticket">
+            <div className="ticket-head"><BrandLine brand={brand} table={table} /></div>
+            <hr className="rule" style={{ marginTop: 14 }} />
+            <h1 className="display h-done">All done<span className="red">.</span></h1>
+            <p style={{ margin: "14px 0 0", fontSize: 16, lineHeight: 1.5, color: "var(--muted)" }}>
+              You can close this tab now. Thank you for dining with us!
+            </p>
+          </div>
+        </div>
       </Shell>
     );
   }
 
-  return <Shell><div className="screen center"><p className="sub">Loading…</p></div></Shell>;
+  return <Shell><div className="screen center"><p className="mono muted">Loading…</p></div></Shell>;
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -476,8 +561,9 @@ function ScanQrButton() {
   }
 
   return (
-    <div className="scan-qr">
-      <label className={`btn file-btn${busy ? " disabled" : ""}`}>
+    <div>
+      {error && <p className="notice" role="alert" style={{ marginTop: 0, marginBottom: 16 }}>{error}</p>}
+      <label className={`cta file-btn${busy ? " disabled" : ""}`}>
         {busy ? "Reading QR…" : error ? "Try again" : "Scan QR code"}
         <input
           type="file"
@@ -488,18 +574,6 @@ function ScanQrButton() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
         />
       </label>
-      {error && <p className="notice" role="alert">{error}</p>}
     </div>
-  );
-}
-
-function RateButton({ face, label, selected, onClick }: { face: FaceKind; label: string; selected: boolean; onClick: () => void }) {
-  const cls = selected ? (face === "good" ? "sel-good" : face === "okay" ? "sel-okay" : "sel-bad") : "";
-  const sentiment: Sentiment = face === "good" ? "happy" : face === "okay" ? "neutral" : "sad";
-  return (
-    <button className={`opt ${cls}`} onClick={onClick} aria-pressed={selected}>
-      <Face kind={sentiment} size={22} />
-      {label}
-    </button>
   );
 }
