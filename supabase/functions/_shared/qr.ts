@@ -10,8 +10,8 @@
 //     Carries the whole receipt, so the guest never photographs the bill.
 //     Bills with more than MAX_RECEIPT_ITEMS lines leave out "it"; the app then asks for a photo.
 
-export const MAX_RECEIPT_ITEMS = 30;
-const MAX_TOKEN_CHARS = 4000;      // a 30-item receipt is about 1,000 characters
+export const MAX_RECEIPT_ITEMS = 10;
+const MAX_TOKEN_CHARS = 4000;      // a 10-item receipt is about 450 characters
 const MAX_RECEIPT_BYTES = 16_000;  // limit after decompression, so a crafted token can't balloon
 
 const enc = new TextEncoder();

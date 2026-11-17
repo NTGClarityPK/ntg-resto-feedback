@@ -4,7 +4,7 @@
 //   $env:QR_SIGNING_KEY = '<same value as the Supabase secret>'
 //   npm run receipts -- https://resto-feedback.netlify.app       -> 3 receipts for the live site
 //   npm run receipts                                             -> this PC's Wi-Fi address, port 5173
-//   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 35-item bill, whose QR
+//   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
 //                                                                    leaves the items out (photo step)
 // Then open test-receipts.html in Chrome, press Ctrl+P and pick the thermal printer.
 // Each QR works for 3 hours from the moment this script runs, and each one can be used once.
@@ -18,7 +18,7 @@ const TENANT_ID = "tenant-test";
 const RESTAURANT = "Umair's Test Kitchen";
 const CURRENCY = "PKR";
 const TAX_RATE = 0.16;
-const MAX_QR_ITEMS = 30; // must match MAX_RECEIPT_ITEMS on the server
+const MAX_QR_ITEMS = 10; // must match MAX_RECEIPT_ITEMS on the server
 
 // Seed menu, in PKR. Names are printed exactly like this.
 const ORDERS = [
@@ -28,7 +28,7 @@ const ORDERS = [
 ];
 const LONG_MENU = ["Chicken Karahi (Full)", "Mutton Karahi (Full)", "Beef Biryani", "Chicken Biryani", "Mutton Pulao", "Seekh Kabab", "Chapli Kabab", "Shami Kabab", "Chicken Tikka", "Malai Boti", "Fish Tikka", "Prawn Masala", "Daal Makhni", "Palak Paneer", "Chana Masala", "Aloo Gobi", "Haleem", "Nihari", "Garlic Naan", "Butter Naan", "Roghni Naan", "Tandoori Roti", "Mint Raita", "Russian Salad", "Green Salad", "Kheer", "Firni", "Gulab Jamun", "Shahi Tukray", "Kashmiri Chai", "Doodh Patti", "Fresh Lime", "Mango Shake", "Pepsi 1.5L", "Mineral Water 1.5L"];
 if (process.argv.includes("--long")) {
-  ORDERS.push({ table: "T-20", server: "Usman", items: LONG_MENU.map((name, i) => [name, (i % 3) + 1, 150 + i * 40]) });
+  ORDERS.push({ table: "T-20", server: "Usman", items: LONG_MENU.slice(0, 15).map((name, i) => [name, (i % 3) + 1, 150 + i * 40]) });
 }
 
 function lanUrl() {
@@ -128,7 +128,9 @@ const html = `<!doctype html>
   .row.sub { padding-left: 3mm; }
   .item { font-weight: 900; font-size: 15px; margin-top: 2mm; }
   hr { border: 0; border-top: 2px dashed #000; margin: 3mm 0; }
-  .qr { width: 58mm; margin: 2mm auto; }
+  /* 32mm leaves room for the SRB tax QR beside it on 80mm paper. Up to 10 items that is
+     about 0.4mm per square, which phones read from a normal distance. */
+  .qr { width: 32mm; margin: 2mm auto; }
   .qr svg { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
   @media screen { body { background: #eee; } .receipt { background: #fff; margin: 12px auto; padding: 4mm; width: calc(72mm + 8mm); } }
 </style></head>

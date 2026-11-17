@@ -12,7 +12,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
                        ▼
             Supabase Edge Functions (only writers/readers)
               ├─ session         verify QR signature, 3-hour window, limits; returns the receipt
-              ├─ read-bill       photo → dish names (OCR via Claude), only for bills over 30 items
+              ├─ read-bill       photo → dish names (OCR via Claude), only for bills over 10 items
               ├─ submit-feedback validate, enforce one-per-bill, device + IP limits, insert
               ├─ export-feedback Resto pulls rows that match its own orders
               └─ cleanup-feedback deletes rows up to the pull cutoff
@@ -26,7 +26,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
 | Rule | Where |
 |---|---|
 | QR is signed (HMAC-SHA256). Tenant, order and receipt contents cannot be forged or edited | `_shared/qr.ts` `verifyQrToken` |
-| At most 30 items in a QR; longer bills leave the items out and the guest photographs the bill | `MAX_RECEIPT_ITEMS` |
+| At most 10 items in a QR; longer bills leave the items out and the guest photographs the bill | `MAX_RECEIPT_ITEMS` |
 | With a full-receipt QR, guests can only rate dishes that are on that receipt | `submit-feedback` |
 | 3 hours from print time, read from the signed payload | `windowState` |
 | One feedback per tenant + order | unique constraint + pre-check |
@@ -60,11 +60,11 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
    }
    ```
 
-   Bills with **more than 30 items**: leave out `it` and send the line count as `"n": 35` instead. The QR stays easy to scan and the guest is asked to photograph the bill.
+   Bills with **more than 10 items**: leave out `it` and send the line count as `"n": 15` instead. The QR stays easy to scan and the guest is asked to photograph the bill.
 2. `payload` = base64url (no padding) of the **raw DEFLATE** compression of that JSON (zlib `deflateRaw`, level 9).
 3. `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, `"2." + payload`).
 
-Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 30-item receipt makes a QR of about 93×93 squares, which prints clearly at 58mm wide on 80mm thermal paper. Building and signing it takes a few milliseconds.
+Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 10-item receipt makes a QR of about 77×77 squares. Printed at 32mm (about 0.4mm per square) it scans well and leaves room for the SRB tax QR beside it on 80mm paper; do not go below 30mm (3 printer dots per square at 203 dpi). Building and signing it takes a few milliseconds.
 
 The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then photographs the bill.
 
