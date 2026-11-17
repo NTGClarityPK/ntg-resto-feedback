@@ -200,7 +200,6 @@ for (const [i, order] of ORDERS.entries()) {
     <hr class="gap">
     <div class="c feedback-title">RATE YOUR MEAL</div>
     <div class="c">We'd love to hear from you!</div>
-    <div class="c small">Feedback is open for 24 hours</div>
     <div class="qr feedback" style="width: ${frame.width}mm">${feedbackQr}</div>
     <div class="c small">Hold your phone close to this code</div>
     <hr>
