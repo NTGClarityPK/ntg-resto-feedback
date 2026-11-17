@@ -9,8 +9,6 @@
   --accent-text: #c62828;  /* darker red for red text on light backgrounds, so it stays readable */
   --on-accent: #ffffff;
   --accent-soft: #ffe3e0;
-  --okay-soft: #fdf0ee;
-  --okay-line: #e2b3ad;
   --warn: #b45309;         /* amber for warnings and "Not good", so they don't blend into the brand red */
   --warn-soft: #fdf1dc;
   --shadow: 0 1px 0 rgba(45, 21, 19, 0.05), 0 12px 28px -14px rgba(244, 67, 54, 0.35);
@@ -127,16 +125,15 @@ h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02e
   height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
   font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
-.opt.sel-good { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); }
-.opt.sel-okay { background: var(--okay-soft); border-color: var(--okay-line); }
-.opt.sel-bad { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+/* Good, Okay and Not good all highlight in the brand red when picked. */
+.opt.sel-good, .opt.sel-okay, .opt.sel-bad { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); }
 
 .tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag {
   border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 12px;
   font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
 }
-.tag.on { background: var(--warn); border-color: var(--warn); color: var(--on-accent); }
+.tag.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .chip {
