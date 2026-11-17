@@ -5,6 +5,8 @@
 //   $env:QR_SIGNING_KEY = '<same value as the Supabase secret>'
 //   npm run receipts -- https://resto-feedback.netlify.app       -> 3 receipts for the live site
 //   npm run receipts                                             -> this PC's Wi-Fi address, port 5173
+//   npm run receipts -- https://resto-feedback.netlify.app --design=chef -> one frame for all
+//                                                     (plate, handi or chef; default: one of each)
 //   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
 //                                                                    leaves the items out (photo step)
 // Then open test-receipts.html in Chrome, press Ctrl+P and pick the thermal printer.
@@ -64,6 +66,69 @@ function signedLink(receipt) {
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const money = (n) => n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ---- Decorative frames for the feedback QR -------------------------------------------------
+// Like KFC's bucket: the artwork goes AROUND the code and never covers it. Covering squares
+// (Taco Bell style) needs a much higher error-correction level, which would make our dense
+// receipt QR far bigger. Every frame keeps the code's white border (quiet zone) clear.
+// All shapes are solid black, so they print cleanly on a thermal printer. Units are mm.
+
+// Places a QR svg (from the qrcode package, white border included) at x, y with side s.
+function placeQr(qrSvg, x, y, s) {
+  const viewBox = qrSvg.match(/viewBox="([^"]+)"/)[1];
+  const inner = qrSvg.replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  return `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="${viewBox}" shape-rendering="crispEdges">${inner}</svg>`;
+}
+const svgWrap = (viewBox, body) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" font-family="Arial, Helvetica, sans-serif">${body}</svg>`;
+
+const FRAMES = {
+  // 1. Resto logo: the code on a round plate, spoon and fork coming in from the right.
+  //    The round plate limits the code to 45mm, the smallest of the three.
+  plate: { width: 72, qrMm: 45, draw: (qr) => svgWrap("0 0 72 70", `
+    <circle cx="35" cy="35" r="33.5" fill="#fff" stroke="#000" stroke-width="1.8"/>
+    ${placeQr(qr, 12.5, 12.5, 45)}
+    <ellipse cx="63.4" cy="26.5" rx="5.2" ry="3.9" fill="#000"/>
+    <rect x="66" y="25.4" width="6" height="2.2" rx="1.1" fill="#000"/>
+    <rect x="63.4" y="39.4" width="4.6" height="7.6" rx="1.8" fill="#000"/>
+    <rect x="58.6" y="39.4" width="5.4" height="1.2" rx="0.5" fill="#000"/>
+    <rect x="58.6" y="41.53" width="5.4" height="1.2" rx="0.5" fill="#000"/>
+    <rect x="58.6" y="43.66" width="5.4" height="1.2" rx="0.5" fill="#000"/>
+    <rect x="58.6" y="45.8" width="5.4" height="1.2" rx="0.5" fill="#000"/>
+    <rect x="66" y="42.1" width="6" height="2.2" rx="1.1" fill="#000"/>`) },
+
+  // 2. Handi: the code inside a cooking pot with a lid, side handles and steam.
+  handi: { width: 72, qrMm: 53, draw: (qr) => svgWrap("0 -6 72 92", `
+    <path d="M26 6 q-1.6 -2 0 -4 q1.6 -2 0 -4" fill="none" stroke="#000" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M46 6 q-1.6 -2 0 -4 q1.6 -2 0 -4" fill="none" stroke="#000" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="36" cy="4.6" r="2.2" fill="#000"/>
+    <path d="M10 14 Q36 -1 62 14 Z" fill="#000"/>
+    <text x="36" y="12.4" text-anchor="middle" font-size="3.6" font-weight="900" fill="#fff">HOW WAS IT?</text>
+    <rect x="4" y="14" width="64" height="4" rx="2" fill="#000"/>
+    <path d="M8 28 C0.5 28 0.5 42 8 42" fill="none" stroke="#000" stroke-width="2.2"/>
+    <path d="M64 28 C71.5 28 71.5 42 64 42" fill="none" stroke="#000" stroke-width="2.2"/>
+    <path d="M8 18 V72 Q8 84 20 84 H52 Q64 84 64 72 V18" fill="#fff" stroke="#000" stroke-width="2"/>
+    ${placeQr(qr, 9.5, 19.5, 53)}`) },
+
+  // 3. Chef: the code is the chef's face, with a puffy chef's hat and a bow tie.
+  chef: { width: 72, qrMm: 56, draw: (qr) => svgWrap("0 0 72 100", `
+    <circle cx="20" cy="15" r="9" fill="#000"/><circle cx="36" cy="11" r="11" fill="#000"/><circle cx="52" cy="15" r="9" fill="#000"/>
+    <rect x="11" y="15" width="50" height="10" fill="#000"/>
+    <circle cx="20" cy="15" r="7" fill="#fff"/><circle cx="36" cy="11" r="9" fill="#fff"/><circle cx="52" cy="15" r="7" fill="#fff"/>
+    <rect x="13" y="15" width="46" height="9" fill="#fff"/>
+    <rect x="11" y="22" width="50" height="8" rx="1" fill="#000"/>
+    <text x="36" y="27.6" text-anchor="middle" font-size="4.2" font-weight="900" fill="#fff">TELL THE CHEF</text>
+    <rect x="6" y="31" width="60" height="62" rx="9" fill="#fff" stroke="#000" stroke-width="2"/>
+    ${placeQr(qr, 8, 34, 56)}
+    <path d="M36 95.5 L27 91 L27 100 Z M36 95.5 L45 91 L45 100 Z" fill="#000"/>
+    <circle cx="36" cy="95.5" r="2" fill="#000"/>`) },
+};
+const DESIGNS = Object.keys(FRAMES);
+const designArg = process.argv.find((a) => a.startsWith("--design="))?.split("=")[1];
+if (designArg && !FRAMES[designArg]) {
+  console.error(`Unknown design "${designArg}". Use one of: ${DESIGNS.join(", ")}.`);
+  process.exit(1);
+}
 const pad = (n) => String(n).padStart(2, "0");
 
 const now = new Date();
@@ -90,12 +155,17 @@ for (const [i, order] of ORDERS.entries()) {
     ...(fits ? { it: order.items } : { n: order.items.length }),
     st: subtotal, tx: tax, sc: 0, dc: 0, tot: subtotal + tax,
   });
-  const feedbackQr = await QRCode.toString(link, { type: "svg", margin: 3, errorCorrectionLevel: "L" });
+  const plainQr = await QRCode.toString(link, { type: "svg", margin: 3, errorCorrectionLevel: "L" });
+  // Each test receipt gets a different frame so all three can be compared on paper,
+  // unless --design=plate|handi|chef picks one for all.
+  const design = designArg || DESIGNS[i % DESIGNS.length];
+  const frame = FRAMES[design];
+  const feedbackQr = frame.draw(plainQr);
   // Stand-in for the SRB tax QR, so test prints have both codes in their real positions.
   // It holds only plain text, so scanning it by mistake shows a note instead of opening anything.
   const srbInvoice = `TEST${ymd.slice(2)}${runNo}${i + 1}`;
   const srbQr = await QRCode.toString(`SAMPLE SRB QR - test receipt, not a tax invoice (${srbInvoice})`, { type: "svg", margin: 3, errorCorrectionLevel: "M" });
-  qrInfo.push(`${orderId}: ${order.items.length} items${fits ? "" : " (too many for the QR, photo step)"}, ${link.length} chars`);
+  qrInfo.push(`${orderId}: ${order.items.length} items${fits ? "" : " (too many for the QR, photo step)"}, "${design}" frame, code ${frame.qrMm}mm`);
   receipts.push(`
   <section class="receipt">
     <div class="c bigger">${esc(RESTAURANT)}</div>
@@ -131,7 +201,7 @@ for (const [i, order] of ORDERS.entries()) {
     <hr class="gap">
     <div class="c feedback-title">RATE YOUR MEAL</div>
     <div class="c">Scan within 3 hours (till ${esc(time(expires))})</div>
-    <div class="qr feedback">${feedbackQr}</div>
+    <div class="qr feedback" style="width: ${frame.width}mm">${feedbackQr}</div>
     <div class="c small">Hold your phone close to this code</div>
     <hr>
 
@@ -165,11 +235,10 @@ const html = `<!doctype html>
   .feedback-title { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
   .qr { margin: 2mm auto; }
   .qr svg { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
-  /* SRB stand-in at about the size on Resto's receipt. The feedback QR is printed at 58mm:
-     smaller sizes (32-36mm) proved hard to scan on real thermal prints. Being much larger
-     than the SRB code also makes cameras prefer it. */
+  /* SRB stand-in at about the size on Resto's receipt. The framed feedback QR spans the
+     printable width (72mm); the code inside is 45-56mm depending on the frame. Codes of
+     32-36mm proved hard to scan on real thermal prints. */
   .qr.srb { width: 28mm; }
-  .qr.feedback { width: 58mm; }
   @media screen { body { background: #eee; } .receipt { background: #fff; margin: 12px auto; padding: 4mm; width: calc(72mm + 8mm); } }
 </style></head>
 <body>${receipts.join("\n")}</body></html>`;
