@@ -25,15 +25,6 @@ const BLOCK_COPY: Record<BlockReason, { title: string; body: string; warn: boole
 let idCounter = 0;
 const newId = () => `d${Date.now()}-${idCounter++}`;
 
-// Countdown text: "2:59:59" while an hour or more is left, then "59:59".
-function fmt(ms: number): string {
-  const t = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(t / 3600);
-  const mm = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
-  const ss = String(t % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
 // The token is read from #qr=... (new receipts: the part after # never reaches the web server,
 // so receipt contents stay out of hosting logs) or ?qr=... (older receipts).
 function readQr(): string {
@@ -75,18 +66,17 @@ export default function App() {
     }).catch(() => block("error"));
   }, [qr]);
 
-  // Live countdown. Closing the window blocks the form.
+  // Checks the clock every few seconds so an open bill closes when its feedback window ends.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(t);
   }, []);
 
+  // No countdown is shown to the guest. The bill still closes when its window ends.
   const remainingMs = session ? new Date(session.expiresAt).getTime() - now : 0;
   useEffect(() => {
     if (session && remainingMs <= 0 && phase !== "thanks" && phase !== "blocked") block("expired");
   }, [remainingMs, session, phase]);
-
-  const timer = session && remainingMs > 0 ? fmt(remainingMs) : undefined;
 
   const currentDish = dishes[dishIdx];
   // True when the dishes came from the signed QR; the photo and confirm steps are skipped.
@@ -197,7 +187,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar brand={brand} timer={timer} />
+          <TopBar brand={brand} />
           <div className="hero"><div className="hero-mark"><Face kind="happy" size={72} /></div></div>
           <div className="eyebrow">{session.receipt?.table ? `Table ${session.receipt.table}` : "Table feedback"}</div>
           <h1>How was your meal?</h1>
@@ -223,7 +213,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("landing")} timer={timer} brand={brand} />
+          <TopBar onBack={() => setPhase("landing")} brand={brand} />
           <Progress step={0} />
           <h1>Scan your bill</h1>
           <p className="sub">Take a clear photo of the bill so we can find what you ordered.</p>
@@ -262,7 +252,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("scan")} timer={timer} brand={brand} />
+          <TopBar onBack={() => setPhase("scan")} brand={brand} />
           <Progress step={0} />
           <h1>Your dishes</h1>
           <p className="sub">Remove anything that isn't on your bill, or add what we missed.</p>
@@ -290,7 +280,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => (dishIdx > 0 ? setDishIdx(dishIdx - 1) : setPhase(receiptDishes ? "landing" : "confirm"))} timer={timer} brand={brand} />
+          <TopBar onBack={() => (dishIdx > 0 ? setDishIdx(dishIdx - 1) : setPhase(receiptDishes ? "landing" : "confirm"))} brand={brand} />
           <Progress step={1} />
           <div className="eyebrow">Dish {dishIdx + 1} of {dishes.length}</div>
           <h1 className="h1-sm">{currentDish.name}</h1>
@@ -327,7 +317,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => (dishes.length ? (setDishIdx(dishes.length - 1), setPhase("dishes")) : setPhase("confirm"))} timer={timer} brand={brand} />
+          <TopBar onBack={() => (dishes.length ? (setDishIdx(dishes.length - 1), setPhase("dishes")) : setPhase("confirm"))} brand={brand} />
           <Progress step={2} />
           <h1>Your visit</h1>
           <p className="sub spaced">Rate what you noticed. Skip anything you didn't experience.</p>
@@ -365,7 +355,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("experience")} timer={timer} brand={brand} />
+          <TopBar onBack={() => setPhase("experience")} brand={brand} />
           <Progress step={3} />
           <h1>Anything else?</h1>
           <p className="sub spaced">Optional. Share a short review for the team.</p>
