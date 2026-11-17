@@ -179,3 +179,25 @@ textarea::placeholder { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   .fade, .spinner { animation: none; }
 }
+
+/* Short phones (iPhone SE and similar, ~667px tall): tighter spacing so each step,
+   including the three visit ratings and the Continue button, fits without scrolling. */
+@media (max-height: 740px) {
+  .screen { padding-bottom: 14px; }
+  .topbar { padding: 10px 0 4px; min-height: 52px; }
+  .progress { margin: 4px 0 14px; }
+  h1 { font-size: 26px; }
+  .sub.spaced { margin: 4px 0 12px; }
+  .stack { gap: 8px; }
+  .card { padding: 12px; }
+  .card.stack-12 { gap: 8px; }
+  .face-btn { padding: 6px 4px 5px; }
+  .footer { padding-top: 10px; }
+  .btn { height: 50px; }
+  .link { padding: 6px; }
+}
+@media (max-height: 660px) {
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .progress { margin-bottom: 10px; }
+  .sub.spaced { margin-bottom: 8px; }
+}

@@ -41,10 +41,13 @@ export function BackIcon() {
   );
 }
 
+// Bill, dishes, Food & Service, Place & Value, review.
+const STEPS = 5;
+
 export function Progress({ step }: { step: number }) {
   return (
-    <div className="progress" aria-label={`Step ${step + 1} of 4`}>
-      {[0, 1, 2, 3].map((i) => (
+    <div className="progress" aria-label={`Step ${step + 1} of ${STEPS}`}>
+      {Array.from({ length: STEPS }, (_, i) => (
         <span key={i} className={i <= step ? "on" : ""} />
       ))}
     </div>

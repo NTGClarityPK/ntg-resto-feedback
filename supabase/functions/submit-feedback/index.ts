@@ -5,7 +5,7 @@ import {
 } from "../_shared/common.ts";
 
 const RATINGS = ["good", "okay", "bad"];
-const CATEGORIES = ["service", "food", "speed", "clean", "ambience", "value", "parking"];
+const CATEGORIES = ["service", "food", "speed", "clean", "ambience", "value"];
 const FACES = ["happy", "neutral", "sad"];
 
 function str(v: unknown, max: number): string | null {

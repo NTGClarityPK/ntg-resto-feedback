@@ -1,15 +1,29 @@
 export type Face = "good" | "okay" | "bad";
-export type CategoryId = "service" | "food" | "speed" | "clean" | "ambience" | "value" | "parking";
+export type CategoryId = "service" | "food" | "speed" | "clean" | "ambience" | "value";
 export type Sentiment = "happy" | "neutral" | "sad";
 
-export const CATEGORIES: { id: CategoryId; label: string }[] = [
-  { id: "service", label: "Service" },
-  { id: "food", label: "Food quality" },
-  { id: "speed", label: "Speed" },
-  { id: "clean", label: "Cleanliness" },
-  { id: "ambience", label: "Ambience" },
-  { id: "value", label: "Value for money" },
-  { id: "parking", label: "Parking" },
+export interface Category { id: CategoryId; label: string }
+
+// The visit ratings, shown three per screen so nobody has to scroll.
+export const CATEGORY_GROUPS: { title: string; sub: string; items: Category[] }[] = [
+  {
+    title: "Food & Service",
+    sub: "How were the food and the team looking after you?",
+    items: [
+      { id: "food", label: "Food quality" },
+      { id: "service", label: "Service" },
+      { id: "speed", label: "Speed" },
+    ],
+  },
+  {
+    title: "Place & Value",
+    sub: "How did the place feel, and was it worth it?",
+    items: [
+      { id: "clean", label: "Cleanliness" },
+      { id: "ambience", label: "Ambience" },
+      { id: "value", label: "Value for money" },
+    ],
+  },
 ];
 
 export const BAD_TAGS = [

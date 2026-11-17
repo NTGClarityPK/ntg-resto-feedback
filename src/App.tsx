@@ -3,7 +3,7 @@ import { checkSession, readBill, submitFeedback } from "./api";
 import { shrinkToJpeg } from "./image";
 import { extractQrToken, readQrFromPhoto } from "./qrScan";
 import { AlertIcon, Centered, CheckIcon, Face, Progress, TopBar } from "./components";
-import { BAD_TAGS, CATEGORIES, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
+import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
 const RESTAURANT = "Umair's Test Kitchen";
 
@@ -42,6 +42,7 @@ export default function App() {
   const [ocrText, setOcrText] = useState("");
   const [dishes, setDishes] = useState<DishItem[]>([]);
   const [dishIdx, setDishIdx] = useState(0);
+  const [visitIdx, setVisitIdx] = useState(0); // which of the two visit-rating screens is showing
   const [newDish, setNewDish] = useState("");
   const [categories, setCategories] = useState<Partial<Record<CategoryId, Sentiment>>>({});
   const [review, setReview] = useState("");
@@ -112,6 +113,7 @@ export default function App() {
 
   function startRating() {
     setDishIdx(0);
+    setVisitIdx(0);
     setPhase(dishes.length ? "dishes" : "experience");
   }
 
@@ -138,7 +140,7 @@ export default function App() {
 
   function goNextDish() {
     if (dishIdx < dishes.length - 1) setDishIdx(dishIdx + 1);
-    else setPhase("experience");
+    else { setVisitIdx(0); setPhase("experience"); }
   }
 
   function skipDish() {
@@ -314,15 +316,24 @@ export default function App() {
   }
 
   if (phase === "experience") {
+    // Two screens of three ratings each (steps 3 and 4 of 5).
+    const group = CATEGORY_GROUPS[visitIdx];
+    const lastGroup = visitIdx === CATEGORY_GROUPS.length - 1;
+    const next = () => (lastGroup ? setPhase("review") : setVisitIdx(visitIdx + 1));
+    const back = () => {
+      if (visitIdx > 0) setVisitIdx(visitIdx - 1);
+      else if (dishes.length) { setDishIdx(dishes.length - 1); setPhase("dishes"); }
+      else setPhase(receiptDishes ? "landing" : "confirm");
+    };
     return (
       <Shell>
-        <div className="screen fade">
-          <TopBar onBack={() => (dishes.length ? (setDishIdx(dishes.length - 1), setPhase("dishes")) : setPhase("confirm"))} brand={brand} />
-          <Progress step={2} />
-          <h1>Your visit</h1>
-          <p className="sub spaced">Rate what you noticed. Skip anything you didn't experience.</p>
+        <div className="screen fade" key={visitIdx}>
+          <TopBar onBack={back} brand={brand} />
+          <Progress step={2 + visitIdx} />
+          <h1>{group.title}</h1>
+          <p className="sub spaced">{group.sub} Skip anything you didn't notice.</p>
           <div className="stack">
-            {CATEGORIES.map((c) => (
+            {group.items.map((c) => (
               <div key={c.id} className="card stack-12">
                 <div className="cat-label">{c.label}</div>
                 <div className="faces">
@@ -342,8 +353,8 @@ export default function App() {
             ))}
           </div>
           <div className="footer">
-            <button className="btn" onClick={() => setPhase("review")}>Continue</button>
-            <button className="link" onClick={() => setPhase("review")}>Skip this step</button>
+            <button className="btn" onClick={next}>Continue</button>
+            <button className="link" onClick={next}>Skip this step</button>
           </div>
         </div>
       </Shell>
@@ -355,8 +366,8 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("experience")} brand={brand} />
-          <Progress step={3} />
+          <TopBar onBack={() => { setVisitIdx(CATEGORY_GROUPS.length - 1); setPhase("experience"); }} brand={brand} />
+          <Progress step={4} />
           <h1>Anything else?</h1>
           <p className="sub spaced">Optional. Share a short review for the team.</p>
           <textarea
