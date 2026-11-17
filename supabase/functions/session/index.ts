@@ -1,5 +1,7 @@
 // POST { qr } -> validates the signed QR and reports whether this bill can still be rated.
-import { db, json, preflight, verifyQr, windowState, hashWithSecret, DEVICE_DAILY_LIMIT } from "../_shared/common.ts";
+import {
+  db, json, preflight, verifyQr, windowState, hashWithSecret, receiptDishNames, DEVICE_DAILY_LIMIT,
+} from "../_shared/common.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -34,11 +36,22 @@ Deno.serve(async (req) => {
     if ((count ?? 0) >= DEVICE_DAILY_LIMIT) return json({ status: "limit_reached" });
   }
 
+  // v2 QRs carry the receipt. The app shows the restaurant and, when the items are
+  // included, goes straight to rating them instead of asking for a photo of the bill.
+  const receipt = payload.receipt;
   return json({
     status: "open",
     tenantId: payload.t,
     orderId: payload.o,
     expiresAt: win.expiresAt,
     remainingMs: win.remainingMs,
+    receipt: receipt
+      ? {
+          restaurant: receipt.restaurant,
+          table: receipt.table,
+          dishes: receiptDishNames(receipt),
+          itemCount: receipt.itemCount,
+        }
+      : null,
   });
 });

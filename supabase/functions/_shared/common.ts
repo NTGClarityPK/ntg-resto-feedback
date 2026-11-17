@@ -1,5 +1,6 @@
 // Shared helpers for all edge functions. Runs on Deno.
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { verifyQrToken, type QrPayload } from "./qr.ts";
 
 export const WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours from print time
 export const DEVICE_DAILY_LIMIT = 2;
@@ -33,47 +34,12 @@ export function db(): SupabaseClient {
   );
 }
 
-function b64urlToBytes(s: string): Uint8Array {
-  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
-  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
-}
+export { MAX_RECEIPT_ITEMS, receiptDishNames } from "./qr.ts";
+export type { QrPayload, Receipt, ReceiptItem } from "./qr.ts";
 
-async function hmacKey(): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    enc.encode(Deno.env.get("QR_SIGNING_KEY")!),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify", "sign"],
-  );
-}
-
-export interface QrPayload {
-  t: string;   // tenant id
-  o: string;   // order id
-  p: number;   // receipt print time, unix seconds
-}
-
-// QR format: <payload b64url>.<signature b64url>, payload is JSON {t,o,p}.
-export async function verifyQr(token: string): Promise<QrPayload | null> {
-  const parts = token.split(".");
-  if (parts.length !== 2) return null;
-  const [payloadB64, sigB64] = parts;
-  const ok = await crypto.subtle.verify(
-    "HMAC",
-    await hmacKey(),
-    b64urlToBytes(sigB64),
-    enc.encode(payloadB64),
-  );
-  if (!ok) return null;
-  try {
-    const data = JSON.parse(new TextDecoder().decode(b64urlToBytes(payloadB64)));
-    if (typeof data.t !== "string" || typeof data.o !== "string" || typeof data.p !== "number") return null;
-    return data as QrPayload;
-  } catch {
-    return null;
-  }
+// Verifies a receipt QR (v1 order-only, or v2 full receipt). Format details are in qr.ts.
+export function verifyQr(token: string): Promise<QrPayload | null> {
+  return verifyQrToken(token, Deno.env.get("QR_SIGNING_KEY") ?? "");
 }
 
 export async function hashWithSecret(value: string): Promise<string> {

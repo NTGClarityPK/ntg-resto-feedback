@@ -34,8 +34,11 @@ function fmt(ms: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+// The token is read from #qr=... (new receipts: the part after # never reaches the web server,
+// so receipt contents stay out of hosting logs) or ?qr=... (older receipts).
 function readQr(): string {
-  return new URLSearchParams(window.location.search).get("qr") ?? "";
+  const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("qr");
+  return fromHash || new URLSearchParams(window.location.search).get("qr") || "";
 }
 
 export default function App() {
@@ -62,6 +65,9 @@ export default function App() {
     checkSession(qr).then((s) => {
       if (s.status === "open") {
         setSession(s.info);
+        // The QR lists what was ordered: no photo or OCR needed.
+        const fromReceipt = s.info.receipt?.dishes ?? [];
+        if (fromReceipt.length) setDishes(fromReceipt.map((name) => ({ id: newId(), name, rating: null, tags: [] })));
         setPhase("landing");
       } else {
         block(s.status === "error" ? "error" : (s.status as BlockReason));
@@ -83,6 +89,9 @@ export default function App() {
   const timer = session && remainingMs > 0 ? fmt(remainingMs) : undefined;
 
   const currentDish = dishes[dishIdx];
+  // True when the dishes came from the signed QR; the photo and confirm steps are skipped.
+  const receiptDishes = (session?.receipt?.dishes.length ?? 0) > 0;
+  const brand = session?.receipt?.restaurant || RESTAURANT;
 
   async function handlePhoto(file: File) {
     setNotice(null);
@@ -188,17 +197,23 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar brand={RESTAURANT} timer={timer} />
+          <TopBar brand={brand} timer={timer} />
           <div className="hero"><div className="hero-mark"><Face kind="happy" size={72} /></div></div>
-          <div className="eyebrow">Table feedback</div>
+          <div className="eyebrow">{session.receipt?.table ? `Table ${session.receipt.table}` : "Table feedback"}</div>
           <h1>How was your meal?</h1>
-          <p className="sub">Snap a photo of your bill, rate what you ordered, and tell us about your visit. It takes about a minute.</p>
+          <p className="sub">
+            {receiptDishes
+              ? `Rate the ${dishes.length === 1 ? "dish" : `${dishes.length} dishes`} on your bill and tell us about your visit. It takes about a minute.`
+              : "Snap a photo of your bill, rate what you ordered, and tell us about your visit. It takes about a minute."}
+          </p>
           <div className="meta">
             <div><span className="dot" />Skip anything you like</div>
             <div><span className="dot" />One feedback per bill</div>
             <div><span className="dot" />Your review goes to the restaurant only</div>
           </div>
-          <div className="footer"><button className="btn" onClick={() => setPhase("scan")}>Start</button></div>
+          <div className="footer">
+            <button className="btn" onClick={() => (receiptDishes ? startRating() : setPhase("scan"))}>Start</button>
+          </div>
         </div>
       </Shell>
     );
@@ -208,7 +223,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("landing")} timer={timer} brand={RESTAURANT} />
+          <TopBar onBack={() => setPhase("landing")} timer={timer} brand={brand} />
           <Progress step={0} />
           <h1>Scan your bill</h1>
           <p className="sub">Take a clear photo of the bill so we can find what you ordered.</p>
@@ -247,7 +262,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("scan")} timer={timer} brand={RESTAURANT} />
+          <TopBar onBack={() => setPhase("scan")} timer={timer} brand={brand} />
           <Progress step={0} />
           <h1>Your dishes</h1>
           <p className="sub">Remove anything that isn't on your bill, or add what we missed.</p>
@@ -275,7 +290,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => (dishIdx > 0 ? setDishIdx(dishIdx - 1) : setPhase("confirm"))} timer={timer} brand={RESTAURANT} />
+          <TopBar onBack={() => (dishIdx > 0 ? setDishIdx(dishIdx - 1) : setPhase(receiptDishes ? "landing" : "confirm"))} timer={timer} brand={brand} />
           <Progress step={1} />
           <div className="eyebrow">Dish {dishIdx + 1} of {dishes.length}</div>
           <h1 className="h1-sm">{currentDish.name}</h1>
@@ -312,7 +327,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => (dishes.length ? (setDishIdx(dishes.length - 1), setPhase("dishes")) : setPhase("confirm"))} timer={timer} brand={RESTAURANT} />
+          <TopBar onBack={() => (dishes.length ? (setDishIdx(dishes.length - 1), setPhase("dishes")) : setPhase("confirm"))} timer={timer} brand={brand} />
           <Progress step={2} />
           <h1>Your visit</h1>
           <p className="sub spaced">Rate what you noticed. Skip anything you didn't experience.</p>
@@ -350,7 +365,7 @@ export default function App() {
     return (
       <Shell>
         <div className="screen fade">
-          <TopBar onBack={() => setPhase("experience")} timer={timer} brand={RESTAURANT} />
+          <TopBar onBack={() => setPhase("experience")} timer={timer} brand={brand} />
           <Progress step={3} />
           <h1>Anything else?</h1>
           <p className="sub spaced">Optional. Share a short review for the team.</p>
@@ -376,7 +391,7 @@ export default function App() {
     return (
       <Shell>
         <Centered icon={<CheckIcon />} title="Thank you">
-          <p className="sub narrow">Your feedback for this table has been sent to {RESTAURANT}.</p>
+          <p className="sub narrow">Your feedback for this table has been sent to {brand}.</p>
           <p className="sub small narrow">This bill is now closed for feedback.</p>
         </Centered>
       </Shell>
@@ -424,7 +439,11 @@ function ScanQrButton() {
           : "We couldn't find a QR code in that photo. Fill most of the photo with the QR, hold steady, and avoid glare.");
         return;
       }
-      window.location.assign(`${window.location.pathname}?qr=${encodeURIComponent(token)}`);
+      // Load the bill on this site. The token goes after # so it never reaches the web server,
+      // and the reload makes the app start over with it (changing only the # does not reload).
+      saveScanError(null);
+      window.history.replaceState(null, "", `${window.location.pathname}#qr=${encodeURIComponent(token)}`);
+      window.location.reload();
     } catch {
       setError("We couldn't read that photo. Please try again.");
     } finally {

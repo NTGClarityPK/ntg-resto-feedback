@@ -23,12 +23,22 @@ export interface DishItem {
   tags: string[];
 }
 
+// Receipt details from a v2 QR. dishes is empty when the bill was too long to fit in the QR,
+// in which case the guest photographs the bill instead.
+export interface SessionReceipt {
+  restaurant: string | null;
+  table: string | null;
+  dishes: string[];
+  itemCount: number | null;
+}
+
 export interface SessionInfo {
   status: "open";
   tenantId: string;
   orderId: string;
   expiresAt: string;
   remainingMs: number;
+  receipt: SessionReceipt | null;
 }
 
 export type SessionStatus =

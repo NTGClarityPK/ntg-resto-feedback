@@ -1,6 +1,6 @@
 # Table Feedback
 
-Guest feedback app for restaurants. Guests scan the QR code on their bill, rate their dishes and visit, and submit once per bill.
+Guest feedback app for restaurants. Guests scan the QR code on their bill, rate their dishes and visit, and submit once per bill. The QR carries the whole receipt, signed by Resto, so guests don't photograph the bill.
 
 It runs on its own Supabase project with one table. It has no connection to Resto's database. Resto pulls matching rows once a day through an API, and a cleanup job then empties the table.
 
@@ -11,8 +11,8 @@ Guest phone ──QR──▶ Static app (Vite + React)
                        │
                        ▼
             Supabase Edge Functions (only writers/readers)
-              ├─ session         verify QR signature, 3-hour window, limits
-              ├─ read-bill       photo → dish names (OCR via Claude)
+              ├─ session         verify QR signature, 3-hour window, limits; returns the receipt
+              ├─ read-bill       photo → dish names (OCR via Claude), only for bills over 30 items
               ├─ submit-feedback validate, enforce one-per-bill, device + IP limits, insert
               ├─ export-feedback Resto pulls rows that match its own orders
               └─ cleanup-feedback deletes rows up to the pull cutoff
@@ -25,7 +25,9 @@ Guest phone ──QR──▶ Static app (Vite + React)
 
 | Rule | Where |
 |---|---|
-| QR is signed (HMAC-SHA256). Tenant and order cannot be forged | `_shared/common.ts` `verifyQr` |
+| QR is signed (HMAC-SHA256). Tenant, order and receipt contents cannot be forged or edited | `_shared/qr.ts` `verifyQrToken` |
+| At most 30 items in a QR; longer bills leave the items out and the guest photographs the bill | `MAX_RECEIPT_ITEMS` |
+| With a full-receipt QR, guests can only rate dishes that are on that receipt | `submit-feedback` |
 | 3 hours from print time, read from the signed payload | `windowState` |
 | One feedback per tenant + order | unique constraint + pre-check |
 | Two submissions per device per day | `DEVICE_DAILY_LIMIT`, device id is hashed |
@@ -37,21 +39,45 @@ Raw device ids and IPs are never stored, only keyed hashes.
 
 ## QR format
 
-`https://<app-domain>/?qr=<payload>.<signature>`
+Resto prints this QR on every receipt. The link puts the token after `#`, so browsers never send it (or the receipt contents) to the web host.
 
-- `payload` = base64url of `{"t": tenantId, "o": orderId, "p": printUnixSeconds}`
-- `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, payload)
+`https://<app-domain>/#qr=2.<payload>.<signature>`
 
-Resto prints this on the receipt. For testing:
+1. Build the receipt as compact JSON:
+
+   ```jsonc
+   {
+     "v": 2,
+     "t": "tenant-1",              // tenant id (required)
+     "o": "ORD-2026-000123",       // order id (required)
+     "p": 1794824872,              // receipt print time, unix seconds (required; starts the 3-hour window)
+     "r": "Umair's Test Kitchen",  // restaurant name shown in the app
+     "tb": "T-03",                 // table
+     "sv": "Ali",                  // server
+     "cur": "PKR",
+     "it": [["Chicken Karahi (Half)", 1, 1450], ["Garlic Naan", 2, 120]],  // [name, quantity, unit price]
+     "st": 1690, "tx": 270, "sc": 0, "dc": 0, "tot": 1960  // subtotal, tax, service charge, discount, total
+   }
+   ```
+
+   Bills with **more than 30 items**: leave out `it` and send the line count as `"n": 35` instead. The QR stays easy to scan and the guest is asked to photograph the bill.
+2. `payload` = base64url (no padding) of the **raw DEFLATE** compression of that JSON (zlib `deflateRaw`, level 9).
+3. `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, `"2." + payload`).
+
+Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 30-item receipt makes a QR of about 93×93 squares, which prints clearly at 58mm wide on 80mm thermal paper. Building and signing it takes a few milliseconds.
+
+The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then photographs the bill.
+
+For testing, `npm run receipts` prints test receipts with full-receipt QRs (see `scripts/print-receipts.mjs`):
 
 ```bash
-QR_SIGNING_KEY=... npm run sign-qr -- tenant-1 order-100 2026-11-01T10:00:00Z https://localhost:5173
+QR_SIGNING_KEY=... npm run receipts -- https://resto-feedback.netlify.app
 ```
 
 ## Setup
 
 1. **Create the Supabase project** (a new project, separate from Resto).
-2. **Run the migration** `supabase/migrations/0001_feedback_submissions.sql`.
+2. **Run the migrations** in `supabase/migrations/`, in order (`0001_feedback_submissions.sql`, then `0002_receipt_column.sql`).
 3. **Set function secrets:**
    ```bash
    supabase secrets set \

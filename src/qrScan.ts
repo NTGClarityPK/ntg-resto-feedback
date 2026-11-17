@@ -113,14 +113,17 @@ export async function readQrFromPhoto(file: File): Promise<string | null> {
   }
 }
 
-// Accepts either a full link (https://.../?qr=<token>) or a bare token, and returns the token.
+// Accepts a full link (https://.../#qr=<token> or https://.../?qr=<token>) or a bare token,
+// and returns the token. Tokens are "<payload>.<sig>" (v1) or "2.<payload>.<sig>" (v2).
+const TOKEN = /^(2\.)?[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 export function extractQrToken(text: string): string | null {
   const trimmed = text.trim();
   try {
-    const token = new URL(trimmed).searchParams.get("qr");
-    if (token) return token;
+    const url = new URL(trimmed);
+    const token = new URLSearchParams(url.hash.slice(1)).get("qr") || url.searchParams.get("qr");
+    if (token) return TOKEN.test(token) ? token : null;
   } catch {
     // Not a URL; fall through and check for a bare token.
   }
-  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
+  return TOKEN.test(trimmed) ? trimmed : null;
 }

@@ -1,6 +1,6 @@
 // POST { qr, imageBase64, mediaType } -> reads the dish lines off a receipt photo.
 // OCR runs here, not in Resto, so the guest app has no connection to Resto's data.
-import { json, preflight, verifyQr, windowState } from "../_shared/common.ts";
+import { json, preflight, receiptDishNames, verifyQr, windowState } from "../_shared/common.ts";
 
 const MAX_BASE64_CHARS = 6_000_000; // about 4.5 MB of image
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -21,6 +21,10 @@ Deno.serve(async (req) => {
   const payload = typeof body.qr === "string" ? await verifyQr(body.qr) : null;
   if (!payload) return json({ status: "invalid" }, 400);
   if (!windowState(payload.p).open) return json({ status: "expired" }, 410);
+
+  // The QR already lists the items: answer from it and skip the paid OCR call.
+  const signedDishes = receiptDishNames(payload.receipt);
+  if (signedDishes.length > 0) return json({ status: "ok", dishes: signedDishes, rawText: "" });
 
   const { imageBase64, mediaType } = body;
   if (typeof imageBase64 !== "string" || imageBase64.length > MAX_BASE64_CHARS) {
