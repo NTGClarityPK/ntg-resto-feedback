@@ -10,13 +10,21 @@ type Phase =
   | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
   | "dishes" | "experience" | "review" | "sending" | "thanks" | "closed";
 
-// Browsers only let a page close a tab that a script opened. A tab opened by scanning a QR
-// code usually stays open, so if it is still there a moment later, show a final screen instead.
-function closeScreen(onStillOpen: () => void) {
-  window.close();
-  window.setTimeout(() => {
-    if (!window.closed) onStillOpen();
-  }, 300);
+// Browsers only let a page close a tab that a script opened, so a tab opened by scanning a QR
+// code can't be closed from here. Close shows a final "All done" screen instead.
+
+// Bills this phone has sent feedback for, so reopening one shows "All done" rather than
+// "Already submitted". Keyed by the QR signature (the part after the last dot).
+const SENT_KEY = "feedback-sent";
+const qrKey = (qr: string) => qr.slice(qr.lastIndexOf(".") + 1).slice(0, 32);
+function sentHere(qr: string): boolean {
+  try { return (JSON.parse(localStorage.getItem(SENT_KEY) || "[]") as string[]).includes(qrKey(qr)); } catch { return false; }
+}
+function markSent(qr: string) {
+  try {
+    const list = (JSON.parse(localStorage.getItem(SENT_KEY) || "[]") as string[]).filter((k) => k !== qrKey(qr));
+    localStorage.setItem(SENT_KEY, JSON.stringify([...list, qrKey(qr)].slice(-50)));
+  } catch { /* storage blocked: the server still stops a second submission */ }
 }
 
 type BlockReason = "missing" | "invalid" | "expired" | "already_submitted" | "limit_reached" | "error";
@@ -73,6 +81,8 @@ export default function App() {
         const fromReceipt = s.info.receipt?.dishes ?? [];
         if (fromReceipt.length) setDishes(fromReceipt.map((name) => ({ id: newId(), name, rating: null, tags: [] })));
         setPhase("landing");
+      } else if (s.status === "already_submitted" && sentHere(qr)) {
+        setPhase("closed");
       } else {
         block(s.status === "error" ? "error" : (s.status as BlockReason));
       }
@@ -90,7 +100,7 @@ export default function App() {
   // No countdown is shown to the guest. The bill still closes when its window ends.
   const remainingMs = session ? new Date(session.expiresAt).getTime() - now : 0;
   useEffect(() => {
-    if (session && remainingMs <= 0 && phase !== "thanks" && phase !== "blocked") block("expired");
+    if (session && remainingMs <= 0 && phase !== "thanks" && phase !== "closed" && phase !== "blocked") block("expired");
   }, [remainingMs, session, phase]);
 
   const currentDish = dishes[dishIdx];
@@ -171,7 +181,7 @@ export default function App() {
     setNotice(null);
     try {
       const result = await submitFeedback({ qr, ocrText, dishes, categories, review: review.trim() });
-      if (result === "saved") setPhase("thanks");
+      if (result === "saved") { markSent(qr); setPhase("thanks"); }
       else block(result === "expired" ? "expired" : result);
     } catch {
       setNotice("Something went wrong sending your feedback. Your answers are still here, so please try again.");
@@ -483,13 +493,13 @@ export default function App() {
           <p className="mono muted rise" style={{ ...delay(1000), margin: "16px 0 0", textAlign: "center" }}>Resto by NTG Clarity</p>
         </div>
         <div className="rise" style={{ ...delay(1200), padding: "0 24px 30px" }}>
-          <button className="cta" onClick={() => closeScreen(() => setPhase("closed"))}>Close</button>
+          <button className="cta" onClick={() => setPhase("closed")}>Close</button>
         </div>
       </Shell>
     );
   }
 
-  // Shown when the browser refuses to close the tab (see closeScreen).
+  // Final screen after Close, and when this phone reopens a bill it already sent.
   if (phase === "closed") {
     return (
       <Shell>
