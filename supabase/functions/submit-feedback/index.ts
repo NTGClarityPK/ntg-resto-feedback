@@ -1,7 +1,7 @@
 // POST { qr, ocrText, dishes, dishRatings, categoryRatings, review } -> stores one feedback per bill.
 import {
   db, json, preflight, verifyQr, windowState, hashWithSecret, clientIp, receiptDishNames,
-  DEVICE_DAILY_LIMIT, IP_HOURLY_LIMIT,
+  DEVICE_DAILY_LIMIT, IP_HOURLY_LIMIT, ONE_FEEDBACK_PER_BILL,
 } from "../_shared/common.ts";
 
 const RATINGS = ["good", "okay", "bad"];
@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
 
   const supabase = db();
 
-  // One feedback per bill.
+  // One feedback per bill (switched off while testing, see common.ts).
+  if (ONE_FEEDBACK_PER_BILL) {
   const { data: existing } = await supabase
     .from("feedback_submissions")
     .select("id")
@@ -76,6 +77,7 @@ Deno.serve(async (req) => {
     .eq("order_id", payload.o)
     .maybeSingle();
   if (existing) return json({ status: "already_submitted" });
+  }
 
   // Per-device daily limit.
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

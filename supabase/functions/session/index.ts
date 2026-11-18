@@ -1,6 +1,6 @@
 // POST { qr } -> validates the signed QR and reports whether this bill can still be rated.
 import {
-  db, json, preflight, verifyQr, windowState, hashWithSecret, receiptDishNames, DEVICE_DAILY_LIMIT,
+  db, json, preflight, verifyQr, windowState, hashWithSecret, receiptDishNames, DEVICE_DAILY_LIMIT, ONE_FEEDBACK_PER_BILL,
 } from "../_shared/common.ts";
 
 Deno.serve(async (req) => {
@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
   if (!win.open) return json({ status: "expired" });
 
   const supabase = db();
+  if (ONE_FEEDBACK_PER_BILL) {
   const { data: existing } = await supabase
     .from("feedback_submissions")
     .select("id")
@@ -23,6 +24,7 @@ Deno.serve(async (req) => {
     .eq("order_id", payload.o)
     .maybeSingle();
   if (existing) return json({ status: "already_submitted" });
+  }
 
   const deviceId = req.headers.get("x-device-id") ?? "";
   if (deviceId) {

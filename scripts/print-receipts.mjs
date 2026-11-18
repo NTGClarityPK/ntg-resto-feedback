@@ -137,7 +137,7 @@ const pad = (n) => String(n).padStart(2, "0");
 
 const now = new Date();
 const printedAtSec = Math.floor(now.getTime() / 1000);
-const expires = new Date((printedAtSec + 24 * 60 * 60) * 1000);
+const expires = new Date((printedAtSec + 365 * 24 * 60 * 60) * 1000); // testing window: 1 year
 const time = (d) => d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
 // Resto's own formats: 22/10/2026, 10:29:22 and MAIN-20261022-0004.
 const stampDate = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;

@@ -2,7 +2,11 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { verifyQrToken, type QrPayload } from "./qr.ts";
 
-export const WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours from print time
+// TESTING: receipts stay open for 1 year. Set back to 24 * 60 * 60 * 1000 (24 hours) before going live.
+export const WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
+// TESTING: one bill can be rated many times. Set back to true before going live
+// (and re-add the unique constraint, see migration 0003).
+export const ONE_FEEDBACK_PER_BILL = false;
 // Per-device daily limit is OFF while testing (no device ever reaches Infinity).
 // Set it back to 2 to allow two submissions per device per 24 hours.
 export const DEVICE_DAILY_LIMIT = Number.POSITIVE_INFINITY;
