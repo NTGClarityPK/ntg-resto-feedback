@@ -203,9 +203,8 @@ for (const [i, order] of ORDERS.entries()) {
          and a gap, so the camera frames one code at a time. -->
     <hr class="gap">
     <div class="c feedback-title">RATE YOUR MEAL</div>
-    <div class="c">We'd love to hear from you!</div>
+    <div class="c">It just takes a minute!</div>
     <div class="qr feedback" style="width: ${frame.width}mm">${feedbackQr}</div>
-    <div class="c small">Hold your phone close to this code</div>
     <hr>
 
     <div class="c">Footer Text</div>
