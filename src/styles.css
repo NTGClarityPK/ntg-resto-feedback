@@ -245,3 +245,16 @@ textarea:focus { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ac
   textarea { height: 160px; }
   .row { padding: 5px 0; }
 }
+
+/* Optional "Share it on Google?" card at the end of the thank-you screen. */
+.gshare { margin-top: 22px; background: var(--surface); border: 1.5px dashed var(--ink); border-radius: 6px; padding: 18px 18px 20px; }
+.gshare-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gshare-top .mono { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.gstars { color: var(--accent); font-size: 18px; letter-spacing: 2px; }
+.gshare-title { margin: 8px 0 0; font-size: 26px; line-height: 1.05; letter-spacing: -.02em; }
+.gshare-sub { margin: 8px 0 14px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+textarea.gshare-text { height: 132px; font-size: 15px; padding: 12px 14px; }
+.gshare-btn { margin-top: 14px; height: 52px; font-size: 15px; background: var(--accent); border-color: var(--ink); box-shadow: 5px 5px 0 var(--ink); }
+.gshare-btn:hover { box-shadow: 6px 6px 0 var(--ink); }
+.gshare-btn:active { box-shadow: 0 0 0 var(--ink); }
+.gshare-hint { margin: 14px 0 0; font-size: 14px; line-height: 1.5; border-left: 4px solid var(--accent); padding-left: 10px; }

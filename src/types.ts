@@ -53,6 +53,7 @@ export interface SessionReceipt {
   table: string | null;
   dishes: string[];
   itemCount: number | null;
+  googleReviewUrl?: string | null; // set when the restaurant added its Google review link
 }
 
 export interface SessionInfo {

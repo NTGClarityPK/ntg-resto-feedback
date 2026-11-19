@@ -11,8 +11,11 @@
 //                                                     (handi is the default; also plate, chef)
 //   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
 //                                                                    leaves the items out (photo step)
+//   npm run receipts -- https://resto-feedback.netlify.app --google=ChIJ...   -> adds the restaurant's
+//       Google Place ID (or a Google review link) to the QR, so the app offers "Share it on Google?"
+//       at the end. Without --google that step is not shown.
 // Then open test-receipts.html in Chrome, press Ctrl+P and pick the thermal printer.
-// Each QR works for 24 hours from the moment this script runs, and each one can be used once.
+// While testing, each QR works for 1 year and can be used any number of times.
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
@@ -24,6 +27,8 @@ const TENANT_ID = "tenant-test";
 // in the QR). Set it with --restaurant="Karachi Grill"; the default copies Resto's sample receipt.
 const RESTAURANT = (process.argv.find((a) => a.startsWith("--restaurant="))?.slice("--restaurant=".length) || "Restoooooo").trim().slice(0, 80);
 const CURRENCY = "PKR";
+// Optional Google review link or Place ID for the "Share it on Google?" step.
+const GOOGLE = (process.argv.find((a) => a.startsWith("--google="))?.slice("--google=".length) || "").trim();
 const TAX_RATE = 0.08;             // FBR @ 8% on card payments, as on Resto's receipt
 const MAX_QR_ITEMS = 10;           // must match MAX_RECEIPT_ITEMS on the server
 
@@ -158,6 +163,7 @@ for (const [i, order] of ORDERS.entries()) {
     r: RESTAURANT, tb: order.table, sv: order.taker, cur: CURRENCY,
     ...(fits ? { it: order.items } : { n: order.items.length }),
     st: subtotal, tx: tax, sc: 0, dc: 0, tot: subtotal + tax,
+    ...(GOOGLE ? { g: GOOGLE } : {}),
   });
   const plainQr = await QRCode.toString(link, { type: "svg", margin: 3, errorCorrectionLevel: "L" });
   // Handi is the chosen frame. --design=plate or --design=chef prints another one instead.
@@ -249,3 +255,4 @@ writeFileSync("test-receipts.html", html);
 console.log(`Wrote test-receipts.html with ${ORDERS.length} receipts.`);
 console.log(`QR links open ${appUrl} and work until ${time(expires)}.`);
 for (const line of qrInfo) console.log(`  ${line}`);
+console.log(GOOGLE ? `"Share it on Google?" step: on (${GOOGLE})` : `"Share it on Google?" step: off (add --google=<Place ID> to turn it on)`);

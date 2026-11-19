@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
           table: receipt.table,
           dishes: receiptDishNames(receipt),
           itemCount: receipt.itemCount,
+          googleReviewUrl: receipt.googleReviewUrl,
         }
       : null,
   });

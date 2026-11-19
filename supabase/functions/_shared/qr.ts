@@ -9,6 +9,8 @@
 //     sig     = base64url(HMAC-SHA256(QR_SIGNING_KEY, "2." + payload))
 //     Carries the whole receipt, so the guest never photographs the bill.
 //     Bills with more than MAX_RECEIPT_ITEMS lines leave out "it"; the app then asks for a photo.
+//     Optional "g" is the restaurant's Google review link (or just its Place ID). Without it the
+//     app shows no "Share on Google" step.
 
 export const MAX_RECEIPT_ITEMS = 10;
 const MAX_TOKEN_CHARS = 4000;      // a 10-item receipt is about 450 characters
@@ -30,6 +32,7 @@ export interface Receipt {
   serviceCharge: number | null;
   discount: number | null;
   total: number | null;
+  googleReviewUrl: string | null; // where guests write a Google review; null hides that step
 }
 
 export interface QrPayload {
@@ -46,6 +49,7 @@ interface RawReceiptV2 {
   it?: [string, number, number?][]; // [name, quantity, unit price]
   n?: number;                       // line count, required when "it" is left out
   st?: number; tx?: number; sc?: number; dc?: number; tot?: number;
+  g?: string;                       // Google review link or Place ID (optional)
 }
 
 function b64urlToBytes(s: string): Uint8Array {
@@ -86,6 +90,27 @@ const text = (v: unknown, max: number): string | null =>
 const money = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e9 ? v : null;
 
+// Google hosts a review link may point at. Anything else is ignored, so even a correctly
+// signed QR can't send guests to another site.
+const GOOGLE_HOSTS = new Set(["search.google.com", "www.google.com", "google.com", "g.page", "maps.app.goo.gl", "goo.gl", "g.co", "maps.google.com"]);
+
+// Accepts a Place ID (e.g. ChIJN1t_tDeuEmsRUsoyG83frY4) or an https link on a Google host.
+// Returns the review page URL, or null when "g" is missing or not acceptable.
+export function googleReviewUrl(g: unknown): string | null {
+  if (typeof g !== "string") return null;
+  const v = g.trim();
+  if (/^[A-Za-z0-9_-]{10,200}$/.test(v)) {
+    return `https://search.google.com/local/writereview?placeid=${v}`;
+  }
+  if (v.length > 300) return null;
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" && GOOGLE_HOSTS.has(u.hostname.toLowerCase()) ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function toReceipt(raw: RawReceiptV2): Receipt | null {
   let items: ReceiptItem[] | null = null;
   if (raw.it !== undefined) {
@@ -112,6 +137,7 @@ function toReceipt(raw: RawReceiptV2): Receipt | null {
     serviceCharge: money(raw.sc),
     discount: money(raw.dc),
     total: money(raw.tot),
+    googleReviewUrl: googleReviewUrl(raw.g),
   };
 }
 

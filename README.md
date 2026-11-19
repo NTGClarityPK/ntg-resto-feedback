@@ -56,7 +56,8 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
      "sv": "Ali",                  // server
      "cur": "PKR",
      "it": [["Chicken Karahi (Half)", 1, 1450], ["Garlic Naan", 2, 120]],  // [name, quantity, unit price]
-     "st": 1690, "tx": 270, "sc": 0, "dc": 0, "tot": 1960  // subtotal, tax, service charge, discount, total
+     "st": 1690, "tx": 270, "sc": 0, "dc": 0, "tot": 1960, // subtotal, tax, service charge, discount, total
+     "g": "ChIJN1t_tDeuEmsRUsoyG83frY4"  // optional: the restaurant's Google Place ID or Google review link
    }
    ```
 
@@ -65,6 +66,8 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
 3. `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, `"2." + payload`).
 
 Item names are what guests rate and what `export-feedback` matches against Resto's orders, so use the names exactly as Resto stores them. A 10-item receipt makes a QR of about 77×77 squares. Print it about 58mm wide, in its own section below the SRB tax QR with a clear heading and at least 25mm of space between the two codes: smaller sizes (32–36mm) were hard to scan on real thermal prints. Building and signing it takes a few milliseconds.
+
+**Share it on Google (optional).** When the QR has `g`, the thank-you screen ends with an optional card: a review drafted from the guest's answers (`draft-review` function, Claude Haiku), which the guest can edit, then **Copy & open Google**. Google doesn't let any site post or pre-fill a review, so the guest pastes it and taps Post from their own account. `g` can be a Place ID (shortest, keeps the QR small) or an https link on a Google host (`search.google.com`, `g.page`, `maps.app.goo.gl`, ...); anything else is ignored. Without `g` the card is not shown. Offer it to every guest, whatever their rating: Google's rules forbid asking only happy guests for reviews.
 
 The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then photographs the bill.
 

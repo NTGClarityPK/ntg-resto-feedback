@@ -79,3 +79,24 @@ export async function submitFeedback(input: SubmitInput): Promise<"saved" | "alr
   }
   throw new Error(d.error ?? "submit_failed");
 }
+
+export interface ReviewInput {
+  qr: string;
+  dishes: DishItem[];
+  categories: Partial<Record<CategoryId, Sentiment>>;
+  review: string;
+}
+
+// Drafts a Google review from the guest's answers. null when the receipt has no Google link.
+export async function draftReview(input: ReviewInput): Promise<{ text: string; stars: number } | null> {
+  const d = await call<{ text?: string; stars?: number }>("draft-review", {
+    qr: input.qr,
+    dishRatings: input.dishes
+      .filter((x) => x.rating)
+      .map((x) => ({ name: x.name, rating: x.rating, tags: x.tags })),
+    categoryRatings: input.categories,
+    review: input.review,
+  });
+  if (d.status !== "ok" || typeof d.text !== "string") return null;
+  return { text: d.text, stars: typeof d.stars === "number" ? d.stars : 5 };
+}

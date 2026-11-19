@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { checkSession, readBill, submitFeedback } from "./api";
 import { shrinkToJpeg } from "./image";
 import { extractQrToken, readQrFromPhoto } from "./qrScan";
+import { GoogleShare } from "./GoogleShare";
 import { ArrowIcon, BrandLine, Face, Header, Row, delay, pad2 } from "./components";
 import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
@@ -109,6 +110,7 @@ export default function App() {
   // Restaurant name from the signed receipt QR. Older QRs have none, and then no name is shown.
   const brand = session?.receipt?.restaurant || "";
   const table = session?.receipt?.table;
+  const googleUrl = session?.receipt?.googleReviewUrl || null;
 
   // One step per dish, one per visit-rating screen, and the review.
   const totalSteps = dishes.length + CATEGORY_GROUPS.length + 1;
@@ -474,7 +476,9 @@ export default function App() {
   if (phase === "thanks") {
     return (
       <Shell>
-        <div className="screen center" style={{ padding: 24 }}>
+        <div className="screen" style={{ padding: 24 }}>
+          {/* Auto margins centre the ticket when it fits, and still let the Google card scroll. */}
+          <div style={{ margin: "auto 0" }}>
           <div className="print ticket">
             <div className="ticket-head"><BrandLine brand={brand} table={table} /></div>
             <hr className="rule" style={{ marginTop: 14 }} />
@@ -491,6 +495,13 @@ export default function App() {
             <div className="stamp stamp-box" aria-hidden="true">RECEIVED</div>
           </div>
           <p className="mono muted rise" style={{ ...delay(1000), margin: "16px 0 0", textAlign: "center" }}>Resto by NTG Clarity</p>
+          {/* Optional last step, only when the receipt QR carries the restaurant's Google link. */}
+          {googleUrl && (
+            <div style={delay(1300)} className="rise">
+              <GoogleShare url={googleUrl} brand={brand} input={{ qr, dishes, categories, review: review.trim() }} />
+            </div>
+          )}
+          </div>
         </div>
         <div className="rise" style={{ ...delay(1200), padding: "0 24px 30px" }}>
           <button className="cta" onClick={() => setPhase("closed")}>Close</button>
