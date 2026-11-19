@@ -5,3 +5,5 @@ dist
 supabase/.temp
 test-receipts.html
 receipt-images/
+# Local secrets files: never commit
+*.local.md

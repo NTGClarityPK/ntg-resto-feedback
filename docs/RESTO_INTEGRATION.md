@@ -155,7 +155,7 @@ The functions URL is `https://dajcwgcmcvkgkuqjrrgj.supabase.co/functions/v1`.
 
 ## Secrets
 
-Share these privately, outside the codebase and out of chat. Keep them on the **Resto server** only.
+Share these privately, outside the codebase and out of chat. Keep them on the **Resto server** only. The actual values are sent separately in `RESTO_SECRETS.local.md`, which is never committed.
 
 | Secret | Used for | Where Resto uses it |
 |---|---|---|
