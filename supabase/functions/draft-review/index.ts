@@ -6,7 +6,8 @@ import { json, preflight, verifyQr, windowState } from "../_shared/common.ts";
 
 const RATING_WORD: Record<string, string> = { good: "good", okay: "okay", bad: "not good" };
 const FACE_WORD: Record<string, string> = { happy: "good", neutral: "okay", sad: "not good" };
-const SCORE: Record<string, number> = { good: 5, okay: 3, bad: 1, happy: 5, neutral: 3, sad: 1 };
+// Generous on purpose: "okay" counts as 4 stars and "not good" as 2, never 1.
+const SCORE: Record<string, number> = { good: 5, okay: 4, bad: 2, happy: 5, neutral: 4, sad: 2 };
 const CATEGORY_LABEL: Record<string, string> = {
   food: "Food quality", service: "Service", speed: "Speed",
   clean: "Cleanliness", ambience: "Ambience", value: "Value for money",
@@ -32,11 +33,15 @@ function readCategories(v: unknown): [string, string][] {
     .filter(([k, f]) => k in CATEGORY_LABEL && typeof f === "string" && f in FACE_WORD) as [string, string][];
 }
 
-// Suggested stars: the average of every answer on a 1-5 scale. The guest picks the stars on Google.
+// Suggested stars, kept generous: each answer scores 5 / 4 / 2, the average is rounded up from
+// .25 (so 4.3 suggests 5), and it never goes below 2 even when every answer was "not good".
+// No answers at all suggests 5. The guest still picks the stars on Google.
+//   all good 5 · all okay 4 · half good, half not good 4 · mostly not good 3 · all not good 2
 function suggestStars(dishes: DishLine[], cats: [string, string][]): number {
   const scores = [...dishes.map((d) => SCORE[d.rating]), ...cats.map(([, f]) => SCORE[f])];
   if (!scores.length) return 5;
-  return Math.min(5, Math.max(1, Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)));
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  return Math.min(5, Math.max(2, Math.round(avg + 0.25)));
 }
 
 // Used when the Claude call fails, so the guest still gets something to start from.

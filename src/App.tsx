@@ -164,6 +164,11 @@ export default function App() {
   function setRating(face: FaceKind) {
     if (!currentDish) return;
     cancelAdvance();
+    // Tapping the selected option again clears it (and stops the move to the next dish).
+    if (currentDish.rating === face) {
+      setDishes((list) => list.map((d, i) => (i === dishIdx ? { ...d, rating: null, tags: [] } : d)));
+      return;
+    }
     setDishes((list) => list.map((d, i) => (i === dishIdx ? { ...d, rating: face, tags: face === "bad" ? d.tags : [] } : d)));
     if (face !== "bad") advanceTimer.current = window.setTimeout(goNextDish, ADVANCE_MS);
   }
