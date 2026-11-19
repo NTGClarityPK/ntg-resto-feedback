@@ -70,6 +70,7 @@ export function GoogleShare({ url, brand, draft, fallbackText }: {
       <button className="cta gshare-btn" onClick={share} disabled={loading}>
         Copy &amp; open Google
       </button>
+      <p className="gshare-handoff">This is where we hand you to Google.</p>
       {copied === "yes" && (
         <p className="gshare-hint" role="status">
           Copied! {stars ? `Tap ${stars} stars, ` : "Tap the stars, "}paste and post.
