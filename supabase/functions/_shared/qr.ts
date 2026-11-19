@@ -8,7 +8,7 @@
 //     payload = base64url(deflate-raw(JSON receipt)), see RawReceiptV2 below
 //     sig     = base64url(HMAC-SHA256(QR_SIGNING_KEY, "2." + payload))
 //     Carries the whole receipt, so the guest never photographs the bill.
-//     Bills with more than MAX_RECEIPT_ITEMS lines leave out "it"; the app then asks for a photo.
+//     Bills with more than MAX_RECEIPT_ITEMS lines carry only the top MAX_RECEIPT_ITEMS by price.
 //     Optional "g" is the restaurant's Google review link (or just its Place ID). Without it the
 //     app shows no "Share on Google" step.
 

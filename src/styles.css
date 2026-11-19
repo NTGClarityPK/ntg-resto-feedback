@@ -77,7 +77,6 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   100% { opacity: 1; transform: rotate(-12deg) scale(1); }
 }
 @keyframes mb-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-@keyframes spin { to { transform: rotate(360deg); } }
 .rise { animation: mb-rise .5s cubic-bezier(.2,.8,.2,1) both; }
 .print { animation: mb-print .8s cubic-bezier(.2,.8,.2,1) .1s both; }
 .stamp { animation: mb-stamp .5s cubic-bezier(.3,1.4,.6,1) 1s both; }
@@ -166,26 +165,6 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .chip:hover { transform: translateY(-2px); }
 .chip.on { background: var(--ink); color: #fff; }
 
-/* Dish list when the bill was photographed. */
-.dish-chip { display: inline-flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; }
-.dish-chip:hover { transform: none; }
-.dish-chip button {
-  width: 30px; height: 30px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--surface);
-  display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1;
-}
-.add-row { display: flex; gap: 8px; margin-top: 16px; }
-.add-row input {
-  flex: 1; min-width: 0; height: 52px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--surface);
-  padding: 0 14px; font-size: 16px; outline: none; transition: box-shadow .15s, transform .15s;
-}
-.add-row input::placeholder { color: var(--placeholder); }
-.add-row input:focus { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--accent); }
-.add-btn {
-  height: 52px; padding: 0 18px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--ink); color: #fff;
-  font-family: Archivo, system-ui, sans-serif; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-}
-.add-btn:disabled { opacity: .4; cursor: not-allowed; }
-
 /* Receipt line: label ........ value */
 .receipt { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
 .row {
@@ -214,11 +193,6 @@ textarea:focus { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ac
 .stamp-box {
   position: absolute; right: 18px; top: 96px; border: 3px solid var(--accent); color: var(--accent); border-radius: 6px;
   padding: 6px 12px; font-family: Archivo, system-ui, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: .08em;
-}
-
-.spinner {
-  width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--hover); border-top-color: var(--accent);
-  animation: spin .9s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

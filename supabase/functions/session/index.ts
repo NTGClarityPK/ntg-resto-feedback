@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   }
 
   // v2 QRs carry the receipt. The app shows the restaurant and, when the items are
-  // included, goes straight to rating them instead of asking for a photo of the bill.
+  // included, goes straight to rating them; without items it skips to the visit ratings.
   const receipt = payload.receipt;
   return json({
     status: "open",

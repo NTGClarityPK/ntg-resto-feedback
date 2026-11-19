@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { checkSession, draftReview, readBill, submitFeedback } from "./api";
-import { shrinkToJpeg } from "./image";
+import { checkSession, draftReview, submitFeedback } from "./api";
 import { extractQrToken, readQrFromPhoto } from "./qrScan";
 import { GoogleLogo, GoogleShare, type Draft } from "./GoogleShare";
 import { ArrowIcon, BrandLine, Face, Header, Row, delay, pad2 } from "./components";
@@ -8,7 +7,7 @@ import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as
 
 
 type Phase =
-  | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
+  | "boot" | "blocked" | "landing"
   | "dishes" | "experience" | "review" | "sending" | "thanks" | "google" | "closed";
 
 // Browsers only let a page close a tab that a script opened, so a tab opened by scanning a QR
@@ -59,11 +58,9 @@ export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [now, setNow] = useState(Date.now());
 
-  const [ocrText, setOcrText] = useState("");
   const [dishes, setDishes] = useState<DishItem[]>([]);
   const [dishIdx, setDishIdx] = useState(0);
   const [visitIdx, setVisitIdx] = useState(0); // which of the visit-rating screens is showing
-  const [newDish, setNewDish] = useState("");
   const [categories, setCategories] = useState<Partial<Record<CategoryId, Sentiment>>>({});
   const [review, setReview] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -81,7 +78,7 @@ export default function App() {
     checkSession(qr).then((s) => {
       if (s.status === "open") {
         setSession(s.info);
-        // The QR lists what was ordered: no photo or OCR needed.
+        // The QR lists what was ordered (up to 10 dishes).
         const fromReceipt = s.info.receipt?.dishes ?? [];
         if (fromReceipt.length) setDishes(fromReceipt.map((name) => ({ id: newId(), name, rating: null, tags: [] })));
         setPhase("landing");
@@ -108,7 +105,8 @@ export default function App() {
   }, [remainingMs, session, phase]);
 
   const currentDish = dishes[dishIdx];
-  // True when the dishes came from the signed QR; the photo and confirm steps are skipped.
+  // Dishes come only from the signed receipt QR (Resto sends the top 10 by price). A receipt
+  // without dishes goes straight to the visit ratings; there is no photo step.
   const receiptDishes = (session?.receipt?.dishes.length ?? 0) > 0;
   // Restaurant name from the signed receipt QR. Older QRs have none, and then no name is shown.
   const brand = session?.receipt?.restaurant || "";
@@ -127,33 +125,6 @@ export default function App() {
 
   // One step per dish, one per visit-rating screen, and the review.
   const totalSteps = dishes.length + CATEGORY_GROUPS.length + 1;
-
-  async function handlePhoto(file: File) {
-    setNotice(null);
-    setPhase("reading");
-    try {
-      const { base64, mediaType } = await shrinkToJpeg(file);
-      const out = await readBill(qr, base64, mediaType);
-      setOcrText(out.rawText);
-      setDishes(out.dishes.map((name) => ({ id: newId(), name, rating: null, tags: [] })));
-      if (out.dishes.length === 0) setNotice("We couldn't read any dishes. Add them below.");
-      setPhase("confirm");
-    } catch {
-      setNotice("We couldn't read that photo. Try again in better light, or add your dishes manually.");
-      setPhase("scan");
-    }
-  }
-
-  function addDish() {
-    const name = newDish.trim().slice(0, 80);
-    if (!name) return;
-    setDishes((d) => [...d, { id: newId(), name, rating: null, tags: [] }]);
-    setNewDish("");
-  }
-
-  function removeDish(id: string) {
-    setDishes((d) => d.filter((x) => x.id !== id));
-  }
 
   function startRating() {
     setDishIdx(0);
@@ -200,7 +171,7 @@ export default function App() {
     setPhase("sending");
     setNotice(null);
     try {
-      const result = await submitFeedback({ qr, ocrText, dishes, categories, review: review.trim() });
+      const result = await submitFeedback({ qr, dishes, categories, review: review.trim() });
       if (result === "saved") { markSent(qr); setPhase("thanks"); }
       else block(result === "expired" ? "expired" : result);
     } catch {
@@ -245,10 +216,10 @@ export default function App() {
             <p className="rise" style={{ ...delay(170), margin: 0, fontSize: 17, lineHeight: 1.5, color: "var(--muted)" }}>
               {receiptDishes
                 ? `Rate the ${dishes.length === 1 ? "dish" : `${dishes.length} dishes`} on your bill and tell us about your visit. It takes about a minute.`
-                : "Snap a photo of your bill, rate what you ordered, and tell us about your visit. It takes about a minute."}
+                : "Tell us about your visit. It takes about a minute."}
             </p>
             <div className="rise receipt" style={delay(250)}>
-              <Row label="Dishes to rate" value={receiptDishes ? pad2(dishes.length) : "From bill"} />
+              {receiptDishes && <Row label="Dishes to rate" value={pad2(dishes.length)} />}
               <Row label="Time" value="~1 min" />
               <Row label="Skip anything" value="Yes" />
               <Row label="Feedback per bill" value="01" />
@@ -256,77 +227,7 @@ export default function App() {
             </div>
           </div>
           <div className="rise" style={delay(340)}>
-            <button className="cta" onClick={() => (receiptDishes ? startRating() : setPhase("scan"))}>Start<ArrowIcon /></button>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (phase === "scan") {
-    return (
-      <Shell>
-        <Header onBack={() => setPhase("landing")} />
-        <div className="screen">
-          <h1 className="rise display h-screen">Scan your bill<span className="red">.</span></h1>
-          <p className="rise lede" style={delay(60)}>Take a clear photo of the bill so we can find what you ordered.</p>
-          <hr className="rule rise" style={{ ...delay(100), marginTop: 20 }} />
-          {notice && <p className="notice rise" role="alert">{notice}</p>}
-          <div className="grow" />
-          <div className="rise actions" style={delay(200)}>
-            <label className="cta file-btn">
-              Take photo
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                hidden
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhoto(f); e.target.value = ""; }}
-              />
-            </label>
-            <button className="link" onClick={() => { setDishes([]); setPhase("confirm"); }}>Enter dishes manually</button>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (phase === "reading") {
-    return (
-      <Shell>
-        <div className="screen center" style={{ alignItems: "center", textAlign: "center", gap: 18 }}>
-          <div className="spinner" aria-hidden="true" />
-          <h1 className="rise display h-screen">Reading your bill<span className="red">…</span></h1>
-          <p className="rise mono muted" style={delay(60)}>This takes a few seconds</p>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (phase === "confirm") {
-    return (
-      <Shell>
-        <Header onBack={() => setPhase("scan")} />
-        <div className="screen">
-          <h1 className="rise display h-screen">Your dishes<span className="red">.</span></h1>
-          <p className="rise lede" style={delay(60)}>Remove anything that isn't on your bill, or add what we missed.</p>
-          <hr className="rule rise" style={{ ...delay(100), marginTop: 20, marginBottom: 20 }} />
-          {notice && <p className="notice" style={{ marginTop: 0, marginBottom: 16 }}>{notice}</p>}
-          <div className="chips">
-            {dishes.map((d) => (
-              <span key={d.id} className="chip dish-chip">
-                {d.name}
-                <button aria-label={`Remove ${d.name}`} onClick={() => removeDish(d.id)}>×</button>
-              </span>
-            ))}
-          </div>
-          <form className="add-row" onSubmit={(e) => { e.preventDefault(); addDish(); }}>
-            <input value={newDish} onChange={(e) => setNewDish(e.target.value)} placeholder="Add a dish" maxLength={80} />
-            <button type="submit" className="add-btn" disabled={!newDish.trim()}>Add</button>
-          </form>
-          <div className="grow" />
-          <div style={{ marginTop: 20 }}>
-            <button className="cta" onClick={startRating}>{dishes.length ? "Rate my dishes" : "Continue"}<ArrowIcon /></button>
+            <button className="cta" onClick={startRating}>Start<ArrowIcon /></button>
           </div>
         </div>
       </Shell>
@@ -338,7 +239,7 @@ export default function App() {
     const back = () => {
       cancelAdvance();
       if (dishIdx > 0) setDishIdx(dishIdx - 1);
-      else setPhase(receiptDishes ? "landing" : "confirm");
+      else setPhase("landing");
     };
     const opts: { face: FaceKind; label: string; letter: string; mood: Sentiment }[] = [
       { face: "good", label: "Good", letter: "A", mood: "happy" },
@@ -412,7 +313,7 @@ export default function App() {
     const back = () => {
       if (visitIdx > 0) setVisitIdx(visitIdx - 1);
       else if (dishes.length) { setDishIdx(dishes.length - 1); setPhase("dishes"); }
-      else setPhase(receiptDishes ? "landing" : "confirm");
+      else setPhase("landing");
     };
     // "Food & Service" → "Food <red>&</red> Service"
     const [left, right] = group.title.split(" & ");

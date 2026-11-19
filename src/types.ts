@@ -46,8 +46,8 @@ export interface DishItem {
   tags: string[];
 }
 
-// Receipt details from a v2 QR. dishes is empty when the bill was too long to fit in the QR,
-// in which case the guest photographs the bill instead.
+// Receipt details from a v2 QR: up to 10 dishes (Resto sends the top 10 by price on long bills).
+// dishes is empty only for receipts without items; the guest then rates just the visit.
 export interface SessionReceipt {
   restaurant: string | null;
   table: string | null;

@@ -1,6 +1,6 @@
 # Table Feedback
 
-Guest feedback app for restaurants. Guests scan the QR code on their bill, rate their dishes and visit, and submit once per bill. The QR carries the whole receipt, signed by Resto, so guests don't photograph the bill.
+Guest feedback app for restaurants. Guests scan the QR code on their bill, rate their dishes and visit, and submit once per bill. The QR carries the whole receipt, signed by Resto, so guests never photograph the bill.
 
 It runs on its own Supabase project with one table. It has no connection to Resto's database. Resto pulls matching rows once a day through an API, and a cleanup job then empties the table.
 
@@ -12,8 +12,8 @@ Guest phone ──QR──▶ Static app (Vite + React)
                        ▼
             Supabase Edge Functions (only writers/readers)
               ├─ session         verify QR signature, 24-hour window, limits; returns the receipt
-              ├─ read-bill       photo → dish names (OCR via Claude), only for bills over 10 items
               ├─ submit-feedback validate, enforce one-per-bill, device + IP limits, insert
+              ├─ draft-review    optional Google review draft from the guest's answers (Claude Haiku)
               ├─ export-feedback Resto pulls rows that match its own orders
               └─ cleanup-feedback deletes rows up to the pull cutoff
                        │
@@ -26,7 +26,7 @@ Guest phone ──QR──▶ Static app (Vite + React)
 | Rule | Where |
 |---|---|
 | QR is signed (HMAC-SHA256). Tenant, order and receipt contents cannot be forged or edited | `_shared/qr.ts` `verifyQrToken` |
-| At most 10 items in a QR; longer bills leave the items out and the guest photographs the bill | `MAX_RECEIPT_ITEMS` |
+| At most 10 items in a QR; longer bills carry the 10 most expensive dishes (by unit price) and the rest aren't rated | `MAX_RECEIPT_ITEMS` |
 | With a full-receipt QR, guests can only rate dishes that are on that receipt | `submit-feedback` |
 | 24 hours from print time, read from the signed payload | `windowState` |
 | One feedback per tenant + order | unique constraint + pre-check |
@@ -61,7 +61,7 @@ Resto prints this QR on every receipt. The link puts the token after `#`, so bro
    }
    ```
 
-   Bills with **more than 10 items**: leave out `it` and send the line count as `"n": 15` instead. The QR stays easy to scan and the guest is asked to photograph the bill.
+   Bills with **more than 10 items**: put only the **10 most expensive dishes** (highest unit price; ties broken by quantity × price) in `it`. The other dishes are left out and aren't rated; there is no photo step. The QR stays easy to scan.
 2. `payload` = base64url (no padding) of the **raw DEFLATE** compression of that JSON (zlib `deflateRaw`, level 9).
 3. `signature` = base64url of HMAC-SHA256(`QR_SIGNING_KEY`, `"2." + payload`).
 
@@ -69,7 +69,7 @@ Item names are what guests rate and what `export-feedback` matches against Resto
 
 **Share it on Google (optional).** When the QR has `g`, the thank-you screen ends with an optional card: a review drafted from the guest's answers (`draft-review` function, Claude Haiku), which the guest can edit, then **Copy & open Google**. Google doesn't let any site post or pre-fill a review, so the guest pastes it and taps Post from their own account. `g` can be a Place ID (shortest, keeps the QR small) or an https link on a Google host (`search.google.com`, `g.page`, `maps.app.goo.gl`, ...); anything else is ignored. Without `g` the card is not shown. Offer it to every guest, whatever their rating: Google's rules forbid asking only happy guests for reviews.
 
-The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then photographs the bill.
+The older order-only format (`?qr=<payload>.<signature>`, payload = base64url of `{"t","o","p"}`, signed over the payload) is still accepted; the guest then rates only the visit, with no dishes.
 
 For testing, `npm run receipts` prints test receipts with full-receipt QRs (see `scripts/print-receipts.mjs`):
 
@@ -93,7 +93,7 @@ QR_SIGNING_KEY=... npm run receipts -- https://resto-feedback.netlify.app
      CLEANUP_KEY=$(openssl rand -hex 32)
    ```
    The SUPABASE_* values are provided automatically to deployed functions, so only set them if your CLI requires it.
-4. **Deploy functions:** `supabase functions deploy session read-bill submit-feedback export-feedback cleanup-feedback --no-verify-jwt`
+4. **Deploy functions:** `supabase functions deploy session submit-feedback draft-review export-feedback cleanup-feedback --no-verify-jwt`
    (The functions check their own keys. `--no-verify-jwt` is needed so the guest app can call them anonymously.)
 5. **Frontend:** copy `.env.example` to `.env`, set `VITE_FUNCTIONS_URL` and `VITE_SUPABASE_ANON_KEY`, then `npm install && npm run build`. Host the `dist/` folder on Netlify or Cloudflare Pages.
 

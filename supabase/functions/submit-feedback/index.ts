@@ -1,4 +1,4 @@
-// POST { qr, ocrText, dishes, dishRatings, categoryRatings, review } -> stores one feedback per bill.
+// POST { qr, dishRatings, categoryRatings, review } -> stores the guest's feedback for a bill.
 import {
   db, json, preflight, verifyQr, windowState, hashWithSecret, clientIp, receiptDishNames,
   DEVICE_DAILY_LIMIT, IP_HOURLY_LIMIT, ONE_FEEDBACK_PER_BILL,
@@ -25,23 +25,17 @@ Deno.serve(async (req) => {
   if (!windowState(payload.p).open) return json({ status: "expired" });
 
   // Validate and clamp every field. Nothing from the client is stored unchecked.
-  // A v2 QR with items is the source of truth for the dishes: the guest can only rate
-  // dishes on their signed receipt. Older QRs and long bills use the list the guest confirmed.
+  // The signed receipt QR is the only source of dishes (Resto sends up to 10, the top ones by
+  // price), so a guest can only rate dishes on their receipt. No dishes in the QR: no dish ratings.
   const signedDishes = receiptDishNames(payload.receipt);
-  const fromReceipt = signedDishes.length > 0;
-  const dishes = fromReceipt
-    ? signedDishes.map((name) => ({ name }))
-    : Array.isArray(body.dishes)
-      ? body.dishes.map((d: unknown) => str((d as any)?.name, 80)).filter(Boolean).slice(0, 60)
-          .map((name: string) => ({ name }))
-      : [];
+  const dishes = signedDishes.map((name) => ({ name }));
   const allowed = new Set(signedDishes.map((n) => n.toLowerCase()));
 
   const dishRatings = Array.isArray(body.dishRatings)
     ? body.dishRatings.slice(0, 60).flatMap((r: any) => {
         const name = str(r?.name, 80);
         if (!name || !RATINGS.includes(r?.rating)) return [];
-        if (fromReceipt && !allowed.has(name.toLowerCase())) return [];
+        if (!allowed.has(name.toLowerCase())) return [];
         const tags = Array.isArray(r.tags)
           ? r.tags.filter((t: unknown) => typeof t === "string").slice(0, 10).map((t: string) => t.slice(0, 40))
           : [];
@@ -58,8 +52,6 @@ Deno.serve(async (req) => {
   }
 
   const review = str(body.review, 500) || null;
-  // With a signed receipt there is no photo, so no OCR text to keep.
-  const ocrText = fromReceipt ? null : str(body.ocrText, 4000) || null;
 
   const deviceId = req.headers.get("x-device-id") ?? "";
   if (!deviceId || deviceId.length > 100) return json({ status: "invalid" }, 400);
@@ -101,7 +93,7 @@ Deno.serve(async (req) => {
     tenant_id: payload.t,
     order_id: payload.o,
     printed_at: new Date(payload.p * 1000).toISOString(),
-    ocr_text: ocrText,
+    ocr_text: null,             // the bill-photo step is gone; column kept for older rows
     receipt: payload.receipt,   // structured receipt from a v2 QR, null for older QRs
     dishes,
     dish_ratings: dishRatings,

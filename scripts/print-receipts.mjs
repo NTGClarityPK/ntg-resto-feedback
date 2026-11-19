@@ -9,8 +9,8 @@
 //                                                     -> the restaurant name on the receipt and in the app
 //   npm run receipts -- https://resto-feedback.netlify.app --design=chef -> another frame
 //                                                     (handi is the default; also plate, chef)
-//   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill, whose QR
-//                                                                    leaves the items out (photo step)
+//   npm run receipts -- https://resto-feedback.netlify.app --long -> adds a 15-item bill; its QR
+//                                                    carries only the 10 most expensive dishes
 //   npm run receipts -- https://resto-feedback.netlify.app --google=ChIJ...   -> adds the restaurant's
 //       Google Place ID (or a Google review link) to the QR, so the app offers "Share it on Google?"
 //       at the end. Without --google that step is not shown.
@@ -65,8 +65,8 @@ const appUrl = (urlArg || lanUrl()).replace(/\/+$/, "");
 const b64url = (buf) => Buffer.from(buf).toString("base64url");
 
 // v2 QR: the whole receipt, compressed and signed. Resto builds the same thing at print time.
-// Bills longer than MAX_QR_ITEMS keep everything except the item lines ("n" gives the count),
-// so the QR stays easy to scan and the guest photographs the bill instead.
+// Bills longer than MAX_QR_ITEMS carry only the top MAX_QR_ITEMS dishes by unit price;
+// the rest are left out and simply aren't rated. Resto does the same at print time.
 function signedLink(receipt) {
   const payload = b64url(deflateRawSync(JSON.stringify(receipt), { level: 9 }));
   const sig = b64url(createHmac("sha256", key).update(`2.${payload}`).digest());
@@ -158,10 +158,12 @@ for (const [i, order] of ORDERS.entries()) {
   const tax = Math.round(subtotal * TAX_RATE);
   const totalQty = order.items.reduce((s, [, q]) => s + q, 0);
   const fits = order.items.length <= MAX_QR_ITEMS;
+  const qrItems = fits ? order.items
+    : [...order.items].sort((a, b) => b[2] - a[2] || b[1] * b[2] - a[1] * a[2]).slice(0, MAX_QR_ITEMS);
   const link = signedLink({
     v: 2, t: TENANT_ID, o: orderId, p: printedAtSec,
     r: RESTAURANT, tb: order.table, sv: order.taker, cur: CURRENCY,
-    ...(fits ? { it: order.items } : { n: order.items.length }),
+    it: qrItems,
     st: subtotal, tx: tax, sc: 0, dc: 0, tot: subtotal + tax,
     ...(GOOGLE ? { g: GOOGLE } : {}),
   });
@@ -174,7 +176,7 @@ for (const [i, order] of ORDERS.entries()) {
   // It holds only plain text, so scanning it by mistake shows a note instead of opening anything.
   const srbInvoice = `TEST${ymd.slice(2)}${runNo}${i + 1}`;
   const srbQr = await QRCode.toString(`SAMPLE SRB QR - test receipt, not a tax invoice (${srbInvoice})`, { type: "svg", margin: 3, errorCorrectionLevel: "M" });
-  qrInfo.push(`${orderId}: ${order.items.length} items${fits ? "" : " (too many for the QR, photo step)"}, "${design}" frame, code ${frame.qrMm}mm`);
+  qrInfo.push(`${orderId}: ${order.items.length} items${fits ? "" : ` (QR carries the top ${MAX_QR_ITEMS} by price)`}, "${design}" frame, code ${frame.qrMm}mm`);
   receipts.push(`
   <section class="receipt">
     <div class="c bigger">${esc(RESTAURANT)}</div>

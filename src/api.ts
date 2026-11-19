@@ -49,15 +49,8 @@ export function checkSession(qr: string): Promise<SessionStatus> {
   });
 }
 
-export async function readBill(qr: string, imageBase64: string, mediaType: string) {
-  const d = await call<{ dishes: string[]; rawText: string }>("read-bill", { qr, imageBase64, mediaType });
-  if (d.status !== "ok") throw new Error(d.error ?? "ocr_failed");
-  return { dishes: d.dishes ?? [], rawText: d.rawText ?? "" };
-}
-
 export interface SubmitInput {
   qr: string;
-  ocrText: string;
   dishes: DishItem[];
   categories: Partial<Record<CategoryId, Sentiment>>;
   review: string;
@@ -66,7 +59,6 @@ export interface SubmitInput {
 export async function submitFeedback(input: SubmitInput): Promise<"saved" | "already_submitted" | "limit_reached" | "expired"> {
   const d = await call<Record<string, unknown>>("submit-feedback", {
     qr: input.qr,
-    ocrText: input.ocrText,
     dishes: input.dishes.map((x) => ({ name: x.name })),
     dishRatings: input.dishes
       .filter((x) => x.rating)
