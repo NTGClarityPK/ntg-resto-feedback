@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { checkSession, readBill, submitFeedback } from "./api";
+import { checkSession, draftReview, readBill, submitFeedback } from "./api";
 import { shrinkToJpeg } from "./image";
 import { extractQrToken, readQrFromPhoto } from "./qrScan";
-import { GoogleShare } from "./GoogleShare";
+import { GoogleLogo, GoogleShare, type Draft } from "./GoogleShare";
 import { ArrowIcon, BrandLine, Face, Header, Row, delay, pad2 } from "./components";
 import { BAD_TAGS, CATEGORY_GROUPS, type CategoryId, type DishItem, type Face as FaceKind, type SessionInfo, type Sentiment } from "./types";
 
 
 type Phase =
   | "boot" | "blocked" | "landing" | "scan" | "reading" | "confirm"
-  | "dishes" | "experience" | "review" | "sending" | "thanks" | "closed";
+  | "dishes" | "experience" | "review" | "sending" | "thanks" | "google" | "closed";
 
 // Browsers only let a page close a tab that a script opened, so a tab opened by scanning a QR
 // code can't be closed from here. Close shows a final "All done" screen instead.
@@ -68,6 +68,9 @@ export default function App() {
   const [review, setReview] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const advanceTimer = useRef<number | undefined>(undefined);
+  // Google review draft: undefined while being written, null if it failed.
+  const [draft, setDraft] = useState<Draft | undefined>(undefined);
+  const draftStarted = useRef(false);
 
   const block = (r: BlockReason) => { setReason(r); setPhase("blocked"); };
   const cancelAdvance = () => window.clearTimeout(advanceTimer.current);
@@ -101,7 +104,7 @@ export default function App() {
   // No countdown is shown to the guest. The bill still closes when its window ends.
   const remainingMs = session ? new Date(session.expiresAt).getTime() - now : 0;
   useEffect(() => {
-    if (session && remainingMs <= 0 && phase !== "thanks" && phase !== "closed" && phase !== "blocked") block("expired");
+    if (session && remainingMs <= 0 && phase !== "thanks" && phase !== "google" && phase !== "closed" && phase !== "blocked") block("expired");
   }, [remainingMs, session, phase]);
 
   const currentDish = dishes[dishIdx];
@@ -111,6 +114,16 @@ export default function App() {
   const brand = session?.receipt?.restaurant || "";
   const table = session?.receipt?.table;
   const googleUrl = session?.receipt?.googleReviewUrl || null;
+
+  // Start writing the Google review as soon as feedback is sent, so it is usually ready
+  // by the time the guest taps "Post review on Google".
+  useEffect(() => {
+    if (phase !== "thanks" || !googleUrl || draftStarted.current) return;
+    draftStarted.current = true;
+    draftReview({ qr, dishes, categories, review: review.trim() })
+      .then((d) => setDraft(d))
+      .catch(() => setDraft(null));
+  }, [phase, googleUrl, qr, dishes, categories, review]);
 
   // One step per dish, one per visit-rating screen, and the review.
   const totalSteps = dishes.length + CATEGORY_GROUPS.length + 1;
@@ -476,9 +489,7 @@ export default function App() {
   if (phase === "thanks") {
     return (
       <Shell>
-        <div className="screen" style={{ padding: 24 }}>
-          {/* Auto margins centre the ticket when it fits, and still let the Google card scroll. */}
-          <div style={{ margin: "auto 0" }}>
+        <div className="screen center" style={{ padding: 24 }}>
           <div className="print ticket">
             <div className="ticket-head"><BrandLine brand={brand} table={table} /></div>
             <hr className="rule" style={{ marginTop: 14 }} />
@@ -495,16 +506,31 @@ export default function App() {
             <div className="stamp stamp-box" aria-hidden="true">RECEIVED</div>
           </div>
           <p className="mono muted rise" style={{ ...delay(1000), margin: "16px 0 0", textAlign: "center" }}>Resto by NTG Clarity</p>
-          {/* Optional last step, only when the receipt QR carries the restaurant's Google link. */}
-          {googleUrl && (
-            <div style={delay(1300)} className="rise">
-              <GoogleShare url={googleUrl} brand={brand} input={{ qr, dishes, categories, review: review.trim() }} />
-            </div>
-          )}
-          </div>
         </div>
         <div className="rise" style={{ ...delay(1200), padding: "0 24px 30px" }}>
+          {/* Optional, only when the receipt QR carries the restaurant's Google link. */}
+          {googleUrl && (
+            <button className="gbtn" onClick={() => setPhase("google")}>
+              <GoogleLogo /> Post review on Google
+            </button>
+          )}
           <button className="cta" onClick={() => setPhase("closed")}>Close</button>
+        </div>
+      </Shell>
+    );
+  }
+
+  // Optional screen: the drafted Google review. Close goes back to the thank-you screen.
+  if (phase === "google" && googleUrl) {
+    return (
+      <Shell>
+        <div className="screen" style={{ padding: 24 }}>
+          <div style={{ margin: "auto 0" }}>
+            <GoogleShare url={googleUrl} brand={brand} draft={draft} fallbackText={review.trim()} />
+          </div>
+        </div>
+        <div style={{ padding: "0 24px 30px" }}>
+          <button className="cta" onClick={() => setPhase("thanks")}>Close</button>
         </div>
       </Shell>
     );
